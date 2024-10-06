@@ -36,7 +36,7 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
   UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
                                               filter(claim_id %in% VectorOfRepeatedClaims)
   
-  Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
+  Claims_Data_Grouped_By_Claim_ID = #Earned Data with Grouped by Claim ID
     UNSW_claims_data %>%
     group_by(claim_id) 
 
@@ -108,7 +108,7 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
         group_by(exposure_id) %>%
         summarise(NumberOfAppearances = n()) %>%
         filter(NumberOfAppearances > 1)
-    VectorOfRepeatedExposures = earned_data_repeated_exposures_only$exposure_id
+    VectorOfRepeatedExposures = NumberOfRowsPerExposure$exposure_id
     VectorOfRepeatedExposures
         
   Claims_With_Earned <- left_join(UNSW_claims_data, Earned_Data_NRE, by = "exposure_id")
