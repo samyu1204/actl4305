@@ -189,9 +189,9 @@ claims.rf <- randomForest(average_total_claim_amount ~., data = claims.train, im
 
 #Variable Importance
 
-frequency.importance <- varImpPlot(frequency.rf)
+frequency.importance <- varImpPlot(frequency.rf) 
 
-average.total.claim.importance <- varImpPlot(claims.rf)
+average.total.claim.importance <- varImpPlot(claims.rf) #nb_breed_trait, pet_age_months, condition_category, nb_suburb
 
 #Correlation Matrix of Features with Claim Size
 
@@ -208,10 +208,9 @@ inf.claims <- c("average_total_claim_amount", "claim_frequency", "average_claim_
 
 corr.subset <- corr.matrix[inf.claims, ]
 
-corrplot(corr.subset, method = "color", type = "upper",
+corr.matrix.visualisation <- corrplot(corr.subset, method = "color", type = "upper",
          t1.col = "black", tl.srt = 45,
          addCoef.col = "black") 
-
-
+#Most correlated to average claim paid per exposure: pet_age_months, nb_contribution, nb_average_breed size
 
 
