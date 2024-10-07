@@ -1,6 +1,10 @@
 library(dplyr)
 library(ggplot2)
 library(lubridate)
+library(tidyverse)
+library(randomForest)
+
+
 
 setwd("/Users/Alex/Documents/2022/UNSW/ACTL4305/Assignment")
 
@@ -118,6 +122,13 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
   ##Investigating Variables
    #Plotting Claims costs by Pet Age split by dog breed / condition type
   
+
+  
+
+#Correlation Matrix of Features with Claims
+
+install.packages("corrplot") #for the visualisation
+library("corrplot")
   
 par(mfrow = c(1,1))
 
@@ -129,10 +140,32 @@ inf.claims <- c("total_claim_amount", "claim_paid")
 
 corr.subset <- corr.matrix[inf.claims, ]
   
-  
+
 corrplot(corr.subset, method = "color", type = "upper",
            t1.col = "black", tl.srt = 45,
-           addCoef.col = "black")
+           addCoef.col = "black") #Most Correlated Features are nb_excess, nb_contribution_excess, pet_age and tenure.x
+
+
+
+#random Forrest model
+
+ommitted.na.claims_with_earned <- na.omit(Claims_With_Earned)
+
+categorical_columns <- ommitted.na.claims_with_earned %>% 
+  select_if(is.factor)
+
+sapply(categorical_columns, function(x) length(unique(x)))
+
+to.remove <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat")
+
+
+rf.training <- ommitted.na.claims_with_earned[,!(colnames(ommitted.na.claims_with_earned) %in% to.remove)]
+
+total.claims.rf <- randomForest(total_claim_amount ~., data = rf.training, importance = TRUE)
+
+varImpPlot(total.claims.rf)
+
+
 
 
   
