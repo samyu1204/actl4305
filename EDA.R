@@ -174,8 +174,19 @@ top25claimsbybreed <- ommitted.na.claims_with_earned %>%
   group_by(nb_breed_name_unique) %>%
   summarise(percentage.frequency = 100*n()/nrow(ommitted.na.claims_with_earned))
 
-top5breeds <- top25claimsbybreed %>%
+top10breeds <- top25claimsbybreed %>%
   arrange(desc(percentage.frequency)) %>%
-  slice_head(n = 5)
+  slice_head(n = 10)
+
+top10breeds.bar <- ggplot(top10breeds, aes(x = reorder(nb_breed_name_unique, percentage.frequency), 
+                        y = percentage.frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +  
+  coord_flip() +  
+  labs(title = "Top 10 Breeds by Percentage Frequency of Claims for the Top 25% of Claims",
+       x = "Breed",
+       y = "Percentage Frequency (%)") +
+  theme_minimal() +  
+  theme(plot.title = element_text(hjust = 0.5))
+
 
 
