@@ -118,18 +118,21 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
   ##Investigating Variables
    #Plotting Claims costs by Pet Age split by dog breed / condition type
   
+  
+par(mfrow = c(1,1))
 
 corr.matrix <- Claims_With_Earned %>%
-  select_if(is.numeric) %>%
-  cor()
-
-glimpse()
-
+    select_if(is.numeric) %>%
+    cor() 
   
-  cor(total_claim_amount %>%
-                     select_if(is.numeric))
-glimpse(Claims_With_Earned)
-colnames(Claims_With_Earned)
+inf.claims <- c("total_claim_amount", "claim_paid")
+
+corr.subset <- corr.matrix[inf.claims, ]
+  
+  
+corrplot(corr.subset, method = "color", type = "upper",
+           t1.col = "black", tl.srt = 45,
+           addCoef.col = "black")
 
 
   
