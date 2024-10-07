@@ -118,5 +118,19 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
   ##Investigating Variables
    #Plotting Claims costs by Pet Age split by dog breed / condition type
   
+
+corr.matrix <- Claims_With_Earned %>%
+  select_if(is.numeric) %>%
+  cor()
+
+glimpse()
+
+  
+  cor(total_claim_amount %>%
+                     select_if(is.numeric))
+glimpse(Claims_With_Earned)
+colnames(Claims_With_Earned)
+
+
   
   
