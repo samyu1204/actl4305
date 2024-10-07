@@ -122,29 +122,7 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
   ##Investigating Variables
    #Plotting Claims costs by Pet Age split by dog breed / condition type
   
-
   
-
-
-
-#random Forrest model to assess variable importance
-
-ommitted.na.claims_with_earned <- na.omit(Claims_With_Earned)
-
-categorical_columns <- ommitted.na.claims_with_earned %>% 
-  select_if(is.factor)
-
-sapply(categorical_columns, function(x) length(unique(x)))
-
-to.remove <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid")
-
-
-rf.training <- ommitted.na.claims_with_earned[,!(colnames(ommitted.na.claims_with_earned) %in% to.remove)]
-
-total.claims.rf <- randomForest(total_claim_amount ~., data = rf.training, importance = TRUE)
-
-claim.size.importance <- varImpPlot(total.claims.rf) 
-
 
 #top 25% of claims by breed 
 Claims.Summary <- summary(ommitted.na.claims_with_earned$total_claim_amount)
@@ -170,7 +148,6 @@ top10breeds.bar <- ggplot(top10breeds, aes(x = reorder(nb_breed_name_unique, per
   theme(plot.title = element_text(hjust = 0.5))
 
 
-
 #Claims Frequency 
 
 Claim.Frequency <- Claims_With_Earned %>%
@@ -181,19 +158,44 @@ mutated_Claims_With_Earned <- Claims_With_Earned %>%
   left_join(Claim.Frequency, by = "exposure_id")
 
 
-to.remove.2 <-c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid", "total_claim_amount")
+#Number of levels for factor variables
+ommitted.na.claims_with_earned <- na.omit(Claims_With_Earned)
 
-freq.train <- Claims_With_Earned_with_frequency[,!(colnames(Claims_With_Earned_with_frequency) %in% to.remove.2)]
+categorical_columns <- ommitted.na.claims_with_earned %>% 
+  select_if(is.factor)
 
+sapply(categorical_columns, function(x) length(unique(x)))
+
+
+#Random Forest Models of Claim Frequency
+
+to.remove.freq <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid", "total_claim_amount", "average_total_claim_amount", "average_claim_paid")
+
+freq.train <- mutated_Claims_With_Earned[,!(colnames(mutated_Claims_With_Earned) %in% to.remove.freq)]
 freq.train <- na.omit(freq.train)
+
 
 frequency.rf <- randomForest(claim_frequency ~., data = freq.train, importance = TRUE)
 
+#Random Forest Model of Average total claims
+
+to.remove.claim.amount <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid", "total_claim_amount", "average_claim_paid", "claim_frequency")
+
+claims.train <- mutated_Claims_With_Earned[,!(colnames(mutated_Claims_With_Earned) %in% to.remove.claim.amount)]
+claims.train <- na.omit(claims.train)
+
+claims.rf <- randomForest(average_total_claim_amount ~., data = claims.train, importance = TRUE)
+
+
+#Variable Importance
+
 frequency.importance <- varImpPlot(frequency.rf)
+
+average.total.claim.importance <- varImpPlot(claims.rf)
 
 #Correlation Matrix of Features with Claim Size
 
-install.packages("corrplot") #for the visualisation
+install.packages("corrplot") #for the visualization
 library("corrplot")
 
 par(mfrow = c(1,1))
