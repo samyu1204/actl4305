@@ -147,7 +147,7 @@ corrplot(corr.subset, method = "color", type = "upper",
 
 
 
-#random Forrest model
+#random Forrest model to assess variable importance
 
 ommitted.na.claims_with_earned <- na.omit(Claims_With_Earned)
 
@@ -156,14 +156,14 @@ categorical_columns <- ommitted.na.claims_with_earned %>%
 
 sapply(categorical_columns, function(x) length(unique(x)))
 
-to.remove <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat")
+to.remove <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid")
 
 
 rf.training <- ommitted.na.claims_with_earned[,!(colnames(ommitted.na.claims_with_earned) %in% to.remove)]
 
 total.claims.rf <- randomForest(total_claim_amount ~., data = rf.training, importance = TRUE)
 
-varImpPlot(total.claims.rf)
+varImpPlot(total.claims.rf) 
 
 
 
