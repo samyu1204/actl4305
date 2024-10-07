@@ -125,26 +125,6 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
 
   
 
-#Correlation Matrix of Features with Claims
-
-install.packages("corrplot") #for the visualisation
-library("corrplot")
-  
-par(mfrow = c(1,1))
-
-corr.matrix <- Claims_With_Earned %>%
-    select_if(is.numeric) %>%
-    cor() 
-  
-inf.claims <- c("total_claim_amount", "claim_paid")
-
-corr.subset <- corr.matrix[inf.claims, ]
-  
-
-corrplot(corr.subset, method = "color", type = "upper",
-           t1.col = "black", tl.srt = 45,
-           addCoef.col = "black") #Most Correlated Features are nb_excess, nb_contribution_excess, pet_age and tenure.x
-
 
 
 #random Forrest model to assess variable importance
@@ -163,7 +143,8 @@ rf.training <- ommitted.na.claims_with_earned[,!(colnames(ommitted.na.claims_wit
 
 total.claims.rf <- randomForest(total_claim_amount ~., data = rf.training, importance = TRUE)
 
-varImpPlot(total.claims.rf) 
+claim.size.importance <- varImpPlot(total.claims.rf) 
+
 
 #top 25% of claims by breed 
 Claims.Summary <- summary(ommitted.na.claims_with_earned$total_claim_amount)
@@ -187,6 +168,48 @@ top10breeds.bar <- ggplot(top10breeds, aes(x = reorder(nb_breed_name_unique, per
        y = "Percentage Frequency (%)") +
   theme_minimal() +  
   theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Claims Frequency 
+
+Claim.Frequency <- Claims_With_Earned %>%
+  group_by(exposure_id) %>%
+  summarise(claim_frequency = n(), average_total_claim_amount = mean(total_claim_amount), average_claim_paid = mean(claim_paid))
+
+mutated_Claims_With_Earned <- Claims_With_Earned %>%
+  left_join(Claim.Frequency, by = "exposure_id")
+
+
+to.remove.2 <-c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid", "total_claim_amount")
+
+freq.train <- Claims_With_Earned_with_frequency[,!(colnames(Claims_With_Earned_with_frequency) %in% to.remove.2)]
+
+freq.train <- na.omit(freq.train)
+
+frequency.rf <- randomForest(claim_frequency ~., data = freq.train, importance = TRUE)
+
+frequency.importance <- varImpPlot(frequency.rf)
+
+#Correlation Matrix of Features with Claim Size
+
+install.packages("corrplot") #for the visualisation
+library("corrplot")
+
+par(mfrow = c(1,1))
+
+corr.matrix <- mutated_Claims_With_Earned %>%
+  select_if(is.numeric) %>%
+  cor() 
+
+inf.claims <- c("average_total_claim_amount", "claim_frequency", "average_claim_paid")
+
+corr.subset <- corr.matrix[inf.claims, ]
+
+corrplot(corr.subset, method = "color", type = "upper",
+         t1.col = "black", tl.srt = 45,
+         addCoef.col = "black") 
+
 
 
 
