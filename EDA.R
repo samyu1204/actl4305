@@ -12,7 +12,7 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
 #UNSW claims data
 
 ##Cleaning the data
-<<<<<<< Updated upstream
+
 UNSW_claims_data$claim_start_date = as.Date(UNSW_claims_data$claim_start_date)
 UNSW_claims_data$claim_status = as.factor(UNSW_claims_data$claim_status)
 UNSW_claims_data$condition_category = as.factor(UNSW_claims_data$condition_category)
@@ -40,8 +40,7 @@ UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
 Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
   UNSW_claims_data %>%
   group_by(claim_id) 
-=======
-<<<<<<< HEAD
+
   UNSW_claims_data$claim_start_date = as.Date(UNSW_claims_data$claim_start_date)
   UNSW_claims_data$claim_status = as.factor(UNSW_claims_data$claim_status)
   UNSW_claims_data$condition_category = as.factor(UNSW_claims_data$condition_category)
@@ -73,11 +72,11 @@ Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
   Claims_Data_Grouped_By_Claim_ID = #Earned Data with Grouped by Claim ID
     UNSW_claims_data %>%
     group_by(claim_id) 
-=======
+
 UNSW_claims_data$claim_start_date = as.Date(UNSW_claims_data$claim_start_date)
 UNSW_claims_data$claim_status = as.factor(UNSW_claims_data$claim_status)
 UNSW_claims_data$condition_category = as.factor(UNSW_claims_data$condition_category)
->>>>>>> Stashed changes
+
 
 #Removing negative tenures and 0 claim_paid
 UNSW_claims_data = 
@@ -102,7 +101,7 @@ UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
 Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
   UNSW_claims_data %>%
   group_by(claim_id) 
->>>>>>> c052304c18c36e9478bbc146fae7d8682e1d24cf
+
 
   q=table(UNSW_claims_data$exposure_id)
   q=q[q>5]
@@ -115,9 +114,7 @@ Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
       summarise(ClaimVolume = n())
   
 ##Investigating each variable
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
+
   summary(UNSW_claims_data)
   par(mfrow = c(2, 2))
   #Investigating claim_status
