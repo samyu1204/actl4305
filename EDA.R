@@ -165,8 +165,17 @@ total.claims.rf <- randomForest(total_claim_amount ~., data = rf.training, impor
 
 varImpPlot(total.claims.rf) 
 
+#top 25% of claims by breed 
+Claims.Summary <- summary(ommitted.na.claims_with_earned$total_claim_amount)
+Q3.Total.Claims <- 447.525
+
+top25claimsbybreed <- ommitted.na.claims_with_earned %>%
+  filter(total_claim_amount >= Q3.Total.Claims) %>%
+  group_by(nb_breed_name_unique) %>%
+  summarise(percentage.frequency = 100*n()/nrow(ommitted.na.claims_with_earned))
+
+top5breeds <- top25claimsbybreed %>%
+  arrange(desc(percentage.frequency)) %>%
+  slice_head(n = 5)
 
 
-
-  
-  
