@@ -125,92 +125,122 @@ UNSW_earned_data = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
   
 
 #top 25% of claims by breed 
-Claims.Summary <- summary(ommitted.na.claims_with_earned$total_claim_amount)
-Q3.Total.Claims <- 447.525
+  Claim.Frequency <- Claims_With_Earned %>%
+    group_by(exposure_id) %>%
+    summarise(claim_frequency = n(), average_total_claim_amount = mean(total_claim_amount), average_claim_paid = mean(claim_paid))
+  
+  mutated_Claims_With_Earned <- Claims_With_Earned %>%
+    left_join(Claim.Frequency, by = "exposure_id")
+  
+  
+  #Number of levels for factor variables
+  ommitted.na.claims_with_earned <- na.omit(Claims_With_Earned)
+  
+  categorical_columns <- ommitted.na.claims_with_earned %>% 
+    select_if(is.factor)
+  
+  sapply(categorical_columns, function(x) length(unique(x)))
+  
+  
+  #top 25% of claims by breed 
+  Claims.Summary <- summary(mutated_Claims_With_Earned$average_total_claim_amount)
+  Q3.average.total.claims <- 557.4
+  
+  top25claimsbybreed <- mutated_Claims_With_Earned %>%
+    filter(average_total_claim_amount >= Q3.average.total.claims) %>%
+    group_by(nb_breed_name_unique) %>%
+    summarise(expected.total.claim.amount = mean(total_claim_amount))
+  
+  top15breeds <- top25claimsbybreed %>%
+    arrange(desc(expected.total.claim.amount)) %>%
+    slice_head(n = 15)
+  
+  top15breeds.bar <- ggplot(top15breeds, aes(x = reorder(nb_breed_name_unique, expected.total.claim.amount), 
+                                             y = expected.total.claim.amount)) +
+    geom_bar(stat = "identity", fill = "steelblue") +  
+    coord_flip() +  
+    labs(title = " Top 25% of Total Average Claims by Breed",
+         x = "Breed",
+         y = "Average Total Claims") +
+    theme_minimal() +  
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  
+  #Random Forest Model of Average total claims
+  
+  to.remove.claim.amount <- c("nb_postcode", "nb_breed_name_unique", 
+                              "UW_Date", "nb_breed_name_unique_concat", 
+                              "quote_time_group","claim_id", "total_claim_amount", 
+                              "average_claim_paid", "claim_frequency", "tenure.x", 
+                              "tenure.y", "claim_status", "earned_units", "exposure_id_1", 
+                              "exposure_id", "nb_policy_first_inception_date", "quote_date", 
+                              "claim_start_date", "lead_date_day", "claim_paid")
+  
+  claims.train <- mutated_Claims_With_Earned[,!(colnames(mutated_Claims_With_Earned) %in% to.remove.claim.amount)]
+  claims.train <- na.omit(claims.train)
+  
+  claims.rf <- randomForest(average_total_claim_amount ~., data = claims.train, importance = TRUE)
+  
+  average.total.claim.importance <- varImpPlot(claims.rf) #nb_breed_trait, pet_age_months, condition_category, nb_suburb
+  
+  #Correlation Matrix of Features with Claim Size
+  
+  install.packages("corrplot") #for the visualization
+  library("corrplot")
+  
+  par(mfrow = c(1,1))
+  
+  corr.matrix <- mutated_Claims_With_Earned %>%
+    select_if(is.numeric) %>%
+    cor() 
+  
+  inf.claims <- c("average_total_claim_amount", "claim_frequency", "average_claim_paid")
+  
+  corr.subset <- corr.matrix[inf.claims, ]
+  
+  corr.matrix.visualisation <- corrplot(corr.subset, method = "color", type = "upper",
+                                        t1.col = "black", tl.srt = 45,
+                                        addCoef.col = "black") 
+  #Most correlated to average claim paid per exposure: pet_age_months, nb_contribution, nb_average_breed size
+  
+  
+  Claims_With_Earned$nb_suburb
+  
+  
+  bysuburb <- mutated_Claims_With_Earned %>%
+    group_by(nb_suburb) %>%
+    summarise(average.total.claims = mean(total_claim_amount), number_of_claims = n()) %>%
+    filter(number_of_claims >= 3)
+  
+  bysuburb <- bysuburb %>%
+    arrange(desc(average.total.claims)) %>%
+    slice_head(n = 10)
+  
+  
+  bysuburb.bar <- ggplot(bysuburb, aes(x = reorder(nb_suburb, average.total.claims), 
+                                       y = average.total.claims)) +
+    geom_bar(stat = "identity", fill = "darkkhaki") +  
+    coord_flip() +  
+    labs(title = "Average Total Claims by Suburb",
+         x = "Suburb",
+         y = "Expected Claim Amount") +
+    theme_minimal() +  
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  
+  number.of.claims.by.suburb <- ggplot(bysuburb, aes(x = nb_suburb, y = number_of_claims)) +
+    geom_bar(stat = "identity", fill = "darkcyan") + 
+    coord_flip() +  
+    labs(title = "Number of Claims by Suburb",
+         x = "Suburb",
+         y = "Number of Claims") +
+    theme_minimal() +  
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  par(mfrow = c(2,2))
+  number.of.claims.by.suburb
+  bysuburb.bartheme(plot.title = element_text(hjust = 0.5))
 
-top25claimsbybreed <- ommitted.na.claims_with_earned %>%
-  filter(total_claim_amount >= Q3.Total.Claims) %>%
-  group_by(nb_breed_name_unique) %>%
-  summarise(percentage.frequency = 100*n()/nrow(ommitted.na.claims_with_earned))
-
-top10breeds <- top25claimsbybreed %>%
-  arrange(desc(percentage.frequency)) %>%
-  slice_head(n = 10)
-
-top10breeds.bar <- ggplot(top10breeds, aes(x = reorder(nb_breed_name_unique, percentage.frequency), 
-                        y = percentage.frequency)) +
-  geom_bar(stat = "identity", fill = "steelblue") +  
-  coord_flip() +  
-  labs(title = "Top 10 Breeds by Percentage Frequency of Claims for the Top 25% of Claims",
-       x = "Breed",
-       y = "Percentage Frequency (%)") +
-  theme_minimal() +  
-  theme(plot.title = element_text(hjust = 0.5))
-
-
-#Claims Frequency 
-
-Claim.Frequency <- Claims_With_Earned %>%
-  group_by(exposure_id) %>%
-  summarise(claim_frequency = n(), average_total_claim_amount = mean(total_claim_amount), average_claim_paid = mean(claim_paid))
-
-mutated_Claims_With_Earned <- Claims_With_Earned %>%
-  left_join(Claim.Frequency, by = "exposure_id")
-
-
-#Number of levels for factor variables
-ommitted.na.claims_with_earned <- na.omit(Claims_With_Earned)
-
-categorical_columns <- ommitted.na.claims_with_earned %>% 
-  select_if(is.factor)
-
-sapply(categorical_columns, function(x) length(unique(x)))
-
-
-#Random Forest Models of Claim Frequency
-
-to.remove.freq <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid", "total_claim_amount", "average_total_claim_amount", "average_claim_paid")
-
-freq.train <- mutated_Claims_With_Earned[,!(colnames(mutated_Claims_With_Earned) %in% to.remove.freq)]
-freq.train <- na.omit(freq.train)
-
-
-frequency.rf <- randomForest(claim_frequency ~., data = freq.train, importance = TRUE)
-
-#Random Forest Model of Average total claims
-
-to.remove.claim.amount <- c("nb_postcode", "nb_breed_name_unique", "nb_breed_name_unique_concat", "claim_paid", "total_claim_amount", "average_claim_paid", "claim_frequency")
-
-claims.train <- mutated_Claims_With_Earned[,!(colnames(mutated_Claims_With_Earned) %in% to.remove.claim.amount)]
-claims.train <- na.omit(claims.train)
-
-claims.rf <- randomForest(average_total_claim_amount ~., data = claims.train, importance = TRUE)
-
-
-#Variable Importance
-
-frequency.importance <- varImpPlot(frequency.rf) 
-
-average.total.claim.importance <- varImpPlot(claims.rf) #nb_breed_trait, pet_age_months, condition_category, nb_suburb
-
-#Correlation Matrix of Features with Claim Size
-
-install.packages("corrplot") #for the visualization
-library("corrplot")
-
-par(mfrow = c(1,1))
-
-corr.matrix <- mutated_Claims_With_Earned %>%
-  select_if(is.numeric) %>%
-  cor() 
-
-inf.claims <- c("average_total_claim_amount", "claim_frequency", "average_claim_paid")
-
-corr.subset <- corr.matrix[inf.claims, ]
-
-corr.matrix.visualisation <- corrplot(corr.subset, method = "color", type = "upper",
-         t1.col = "black", tl.srt = 45,
-         addCoef.col = "black") 
-#Most correlated to average claim paid per exposure: pet_age_months, nb_contribution, nb_average_breed size
-
-
+par(mfrow = c(2,2))
+number.of.claims.by.suburb
+bysuburb.bar
