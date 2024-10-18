@@ -3,11 +3,11 @@ library(ggplot2)
 library(lubridate)
 
 
-UNSW_claims_data_raw = read.csv("UNSW_claims_data.csv", header=TRUE )
+UNSW_claims_data_raw = read.csv("data/UNSW_claims_data.csv", header=TRUE )
 UNSW_claims_data = UNSW_claims_data_raw
 
 
-UNSW_earned_data_raw = read.csv("UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
+UNSW_earned_data_raw = read.csv("data/UNSW_earned_data_adjusted_Sep27.csv", header=TRUE)
 UNSW_earned_data = UNSW_earned_data_raw
 
 #UNSW claims data
@@ -134,8 +134,8 @@ Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
     UNSW_earned_data$person_dob = as.Date(UNSW_earned_data$person_dob)
     UNSW_earned_data$nb_breed_type = as.factor(UNSW_earned_data$nb_breed_type)
     UNSW_earned_data$nb_breed_trait = as.factor(UNSW_earned_data$nb_breed_trait)
-    UNSW_earned_data$lead_date_day = as.Date(UNSW_earned_data$lead_date_day)
-    UNSW_earned_data$quote_date= as.Date(UNSW_earned_data$quote_date)
+    UNSW_earned_data$lead_date_day = as.Date(UNSW_earned_data$lead_date_day, origin = "1970-01-01")
+    UNSW_earned_data$quote_date= as.Date(UNSW_earned_data$quote_date, origin = "1970-01-01")
     UNSW_earned_data$quote_time_group= as.factor(UNSW_earned_data$quote_time_group)
     UNSW_earned_data$nb_postcode= as.factor(UNSW_earned_data$nb_postcode)
   
