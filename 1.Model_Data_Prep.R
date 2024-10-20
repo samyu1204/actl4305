@@ -210,11 +210,12 @@ for (col in colnames(combined_data)) {
 # Merge SA2 code onto it (needs to be fixed bcs same postcode has many suburbs)
 sa2_mapping <- read_excel("data/sa2_mapping.xlsx")
 sa2_mapping$nb_postcode <- as.factor(sa2_mapping$nb_postcode)
+
 names(combined_data)
 combined_data_sa2 = left_join(combined_data, sa2_mapping, "SA2_CODE", by = c("nb_postcode"))
 
 
-### ignore for now
+### IGNORE FOR NOW
 ## row 1 and 5409 has many-to-many relationship
 
 combined_data_sa2[1,c("nb_postcode", "nb_suburb", "SA2_CODE", "nb_state")]
@@ -229,5 +230,3 @@ combined_data_sa2[1,c("SA2_CODE")] <- 213011338
 # for Row 5409, suburb name = Hamilton (in QLD), so SA_2 code = 305031124
 combined_data_sa2[5409,c("SA2_CODE")] <- 305031124
 
-##
-combined_data <- combined_data_sa2
