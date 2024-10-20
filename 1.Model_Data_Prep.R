@@ -114,7 +114,7 @@ UNSW_earned_data$nb_address_type_adj = as.factor(UNSW_earned_data$nb_address_typ
 UNSW_earned_data$nb_breed_name_unique = as.factor(UNSW_earned_data$nb_breed_name_unique)
 UNSW_earned_data$nb_breed_name_unique_concat = as.factor(UNSW_earned_data$nb_breed_name_unique_concat)
 UNSW_earned_data$is_multi_pet_plan = as.factor(UNSW_earned_data$is_multi_pet_plan)
-UNSW_earned_data = UNSW_earned_data %>% select(-pet_age_years, -X)
+UNSW_earned_data = UNSW_earned_data %>% select(-X)
 UNSW_earned_data$nb_state = as.factor(UNSW_earned_data$nb_state)
 UNSW_earned_data$person_dob = as.Date(UNSW_earned_data$person_dob)
 UNSW_earned_data$nb_breed_type = as.factor(UNSW_earned_data$nb_breed_type)
@@ -207,7 +207,7 @@ for (col in colnames(combined_data)) {
 }
 
 # =================================================================================
-# Merge SA2 code onto it (needs to be fixed bcs same postcode has many suburbs)
+# Merge SA2 code onto it (needs to be fixed bcs same postcode has many SA2)
 sa2_mapping <- read_excel("data/sa2_mapping.xlsx")
 sa2_mapping$nb_postcode <- as.factor(sa2_mapping$nb_postcode)
 
