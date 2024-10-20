@@ -5,7 +5,6 @@ library(sf)
 library(ggplot2)
 library(xgboost)
 library(Matrix)
-library(caret)
 library(lubridate)
 
 # ==============================================================================
@@ -23,7 +22,7 @@ combined_data$nb_state_num <- as.numeric(combined_data$nb_state)
 
 # Convert breed type
 combined_data$nb_breed_type <- as.factor(combined_data$nb_breed_type)
-combined_data$nb_breed_type_num <- as.numeric(combined_data$nb_breed_type)4
+combined_data$nb_breed_type_num <- as.numeric(combined_data$nb_breed_type)
 
 # Convert breed trait
 combined_data$nb_breed_trait <- as.factor(combined_data$nb_breed_trait)
@@ -59,6 +58,33 @@ ggplot(combined_data, aes(x = age_bucket, y = severity)) +
        y = "Average Severity") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+###==== Added on 20 Oct 2024
+
+## changing some variable type
+combined_data$pet_de_sexed_age=as.factor(combined_data$pet_de_sexed_age)
+combined_data$nb_suburb = as.factor(combined_data$nb_suburb)
+combined_data$nb_contribution_excess_factor = as.factor(combined_data$nb_contribution_excess)
+
+
+## interaction term
+
+# pet_gender and pet_de_sexed
+combined_data$pet_gender_de_sexed <- paste(combined_data$pet_gender, combined_data$pet_de_sexed, sep = "_")
+(combined_data %>% select(pet_gender, pet_de_sexed, pet_gender_de_sexed))
+
+ggplot(data = combined_data) +
+  aes(y = claim_freq, x = as.factor(pet_gender_de_sexed)) +
+  geom_violin() +ylim(0,0.5)
+
+## checking
+glm_test <- glm(claim_nb ~ pet_gender_de_sexed + nb_contribution_excess_factor +
+                  age_bucket + owners_age + as.factor(nb_number_of_breeds),
+                data = combined_data, subset = train_indices,
+                offset = log(Total_Earned), family = poisson(link = "log"))
+summary(glm_test)
+###===
+
 # ==============================================================================
 # Special Feature creation
 # 1. Create an owner's age group, and also a pet's age grouyp and look to feature engineer something out of that
@@ -171,5 +197,6 @@ title(main = "Lasso Coefficient Shrinkage - Non-Zero Coefficients", xlab = "Log(
 # Highlight the selected features
 abline(v = log(lasso_model$lambda.min), col = "blue", lty = 2)
 
+summary(lasso_model$glmnet.fit)
 
 

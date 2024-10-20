@@ -28,8 +28,8 @@ UNSW_claims_data =
   filter(tenure >= 0, total_claim_amount>0)
 
 ### checking - delete later
-zero_claim_paid <- UNSW_claims_data %>%
-  filter(claim_paid <= 0)
+#zero_claim_paid <- UNSW_claims_data %>%
+#  filter(claim_paid <= 0)
 #View(zero_claim_paid)
 #UNSW_earned_data %>% filter(exposure_id == "exposure_11489811-f986-4ef2-9090-46db3f423860")
 
@@ -42,61 +42,61 @@ UNSW_claims_data = #Removing Duplicate Rows in UNSW Claims Data
 
 
 ##look at the duplicated row - delete later
-duplicated_claim_row = UNSW_claims_data[duplicated(UNSW_claims_data),]
+#duplicated_claim_row = UNSW_claims_data[duplicated(UNSW_claims_data),]
 
 
 ##### checking - delete later
-UNSW_claims_data %>% filter(claim_id %in% duplicated_claim_row$claim_id)
-#Investigating duplicated claim id
-n=table(UNSW_claims_data$claim_id)
-nrow(n[n!=1])
-
-NumberOfRowsPerClaim =
-  UNSW_claims_data %>%
-  group_by(claim_id) %>%
-  summarise(NumberOfAppearances = n()) %>%
-  filter(NumberOfAppearances > 1)
-VectorOfRepeatedClaims = NumberOfRowsPerClaim$claim_id
-length(VectorOfRepeatedClaims)
-
-UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
-  filter(claim_id %in% VectorOfRepeatedClaims)
-
-UNSW_claims_data %>% group_by(claim_status) %>% summarise(n = n(), Total_claim_paid = sum(claim_paid))
-
-## this doesn't do anything...
-Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
-  UNSW_claims_data %>%
-  group_by(claim_id) 
-
-#Investigating duplicate claims
-
-n=table(UNSW_claims_data$claim_id)
-nrow(n[n!=1])
-
-NumberOfRowsPerClaim =
-  UNSW_claims_data %>%
-  group_by(claim_id) %>%
-  summarise(NumberOfAppearances = n()) %>%
-  filter(NumberOfAppearances > 1)
-VectorOfRepeatedClaims = NumberOfRowsPerClaim$claim_id
-length(VectorOfRepeatedClaims)
-
-UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
-  filter(claim_id %in% VectorOfRepeatedClaims)
-
-Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
-  UNSW_claims_data %>%
-  group_by(claim_id) 
-
-Claim_Volume_Vs_Exposure_ID = #Table of Exposure Ids with their respective claim volumes
-  UNSW_claims_data %>%
-  group_by(exposure_id)%>%
-  summarise(ClaimVolume = n())
+# UNSW_claims_data %>% filter(claim_id %in% duplicated_claim_row$claim_id)
+# #Investigating duplicated claim id
+# n=table(UNSW_claims_data$claim_id)
+# nrow(n[n!=1])
+# 
+# NumberOfRowsPerClaim =
+#   UNSW_claims_data %>%
+#   group_by(claim_id) %>%
+#   summarise(NumberOfAppearances = n()) %>%
+#   filter(NumberOfAppearances > 1)
+# VectorOfRepeatedClaims = NumberOfRowsPerClaim$claim_id
+# length(VectorOfRepeatedClaims)
+# 
+# UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
+#   filter(claim_id %in% VectorOfRepeatedClaims)
+# 
+# UNSW_claims_data %>% group_by(claim_status) %>% summarise(n = n(), Total_claim_paid = sum(claim_paid))
+# 
+# ## this doesn't do anything...
+# Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
+#   UNSW_claims_data %>%
+#   group_by(claim_id)
+# 
+# #Investigating duplicate claims
+# 
+# n=table(UNSW_claims_data$claim_id)
+# nrow(n[n!=1])
+# 
+# NumberOfRowsPerClaim =
+#   UNSW_claims_data %>%
+#   group_by(claim_id) %>%
+#   summarise(NumberOfAppearances = n()) %>%
+#   filter(NumberOfAppearances > 1)
+# VectorOfRepeatedClaims = NumberOfRowsPerClaim$claim_id
+# length(VectorOfRepeatedClaims)
+# 
+# UNSW_claims_data_ONLY_Repeated_claim_ids = UNSW_claims_data %>%
+#   filter(claim_id %in% VectorOfRepeatedClaims)
+# 
+# Claims_Data_NRC = #Earned Data with No Repeated Claim IDs
+#   UNSW_claims_data %>%
+#   group_by(claim_id)
+# 
+# Claim_Volume_Vs_Exposure_ID = #Table of Exposure Ids with their respective claim volumes
+#   UNSW_claims_data %>%
+#   group_by(exposure_id)%>%
+#   summarise(ClaimVolume = n())
 
 ##Investigating each variable
 
-par(mfrow = c(2, 2))
+# par(mfrow = c(2, 2))
 
 ######################### delete above later
 

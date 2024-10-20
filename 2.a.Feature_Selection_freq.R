@@ -7,6 +7,27 @@ library(xgboost)
 library(Matrix)
 library(lubridate)
 
+###### Ways to select feature for model building
+
+## 1. EDA
+
+## 2. Build Model - look at coef
+
+## 3. Do lasso regression
+
+## 4. forward / backward selection (stepAIC) / best subset selection
+
+
+### other possible extra features
+## 1. income, unemployment, education? => hard to combine coz one postcode has
+## many SA2_code
+
+
+
+
+
+
+
 # ==============================================================================
 # Feature engineering
 # Numerical variable conversion
