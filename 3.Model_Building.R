@@ -81,7 +81,7 @@ curve(dnorm(x, mean = mean_val, sd = sd_val),
       lwd = 2, 
       add = TRUE)
 legend("topright", legend = c("Data Density", "Normal Distribution"), 
-       col = c("blue", "red"), lwd = 2) ###Heavy Skew, implicates use of gamma distribution for the GLM
+       col = c("blue", "red"), lwd = 2) ###Heavy Skew, indicates use of gamma distribution for the GLM
 
 
 #Training and Validation Set
@@ -125,12 +125,11 @@ glm_gamma_frequency$coefficients
 
 #Frequency GLM test error
 
-frequency_glm_prediction <- predict(glm_gamma_frequency, newdata = test.set)
+frequency_glm_prediction <- predict(glm_gamma_frequency, newdata = test.set, type = "response")
 
 test_frequency <- unlist(test_frequency)
 test_frequency_numeric <- as.numeric(test_frequency)
 
-(test.mse.frequency <- mean((frequency_glm_prediction-test_frequency)^2, na.rm = TRUE))
+(test.mse.frequency <- mean((frequency_glm_prediction-test_frequency_numeric)^2, na.rm = TRUE))
 
-
-###Problems: Predicts Negative claim frequency
+plot(frequency_glm_prediction)
