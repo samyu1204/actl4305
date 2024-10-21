@@ -200,3 +200,68 @@ abline(v = log(lasso_model$lambda.min), col = "blue", lty = 2)
 summary(lasso_model$glmnet.fit)
 
 
+
+
+###Pet_de_sexed * Gender
+
+to.include <- c("condition_category", "claim_paid", "pet_gender", "pet_de_sexed", 
+                "pet_de_sexed_age", "pet_age_months", "pet_is_switcher", "nb_address_type_adj", "nb_state", "person_dob",
+                "owner_age_years", "nb_number_of_breeds", "nb_average_breed_size", "nb_breed_type", "is_multi_pet_plan")
+
+# Subset columns
+Claims_With_Earned_new <- Claims_With_Earned[, which(colnames(Claims_With_Earned) %in% to.include)]
+
+# Binary conversion for pet_gender and pet_de_sexed
+Claims_With_Earned_new$pet_gender <- ifelse(Claims_With_Earned_new$pet_gender == "female", 1, 0)
+Claims_With_Earned_new$pet_gender <- as.numeric(Claims_With_Earned_new$pet_gender)
+
+Claims_With_Earned_new$pet_de_sexed <- ifelse(Claims_With_Earned_new$pet_de_sexed == "true", 1, 0)
+Claims_With_Earned_new$pet_de_sexed <- as.numeric(Claims_With_Earned_new$pet_de_sexed)
+
+# Create interaction term
+Claims_With_Earned_new <- Claims_With_Earned_new %>%
+  mutate(interaction = pet_gender * pet_de_sexed)
+
+# Omit missing values
+Claims_With_Earned_new <- na.omit(Claims_With_Earned_new)
+
+# Separate features and target variable for model matrix
+X <- Claims_With_Earned_new[, -which(colnames(Claims_With_Earned_new) == "claim_paid")]
+X <- model.matrix(~., data = X)[,-1] # Model matrix excluding the intercept
+
+Y <- Claims_With_Earned_new$claim_paid[!is.na(Claims_With_Earned_new$claim_paid)]
+
+# Fit Lasso model using glmnet
+fit <- cv.glmnet(x = X, y = Y, alpha = 1)
+
+# Coefficients of the fit model
+print(coef(fit, s = "lambda.min"))
+
+# Plot interaction using ggplot
+ggplot(Claims_With_Earned_new, aes(x = pet_gender, y = claim_paid, color = as.factor(pet_de_sexed))) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group = pet_de_sexed), se = FALSE) +
+  labs(title = "Interaction Between Pet Gender and Desexed Status on Claim Paid")
+
+#linear models with and without interaction
+with.interaction <- lm(claim_paid ~ ., data = Claims_With_Earned_new)
+without.interaction <- lm(claim_paid ~ ., data = Claims_With_Earned_new[, -which(colnames(Claims_With_Earned_new) == "interaction")])
+
+# Compare models using AIC
+AIC(with.interaction, without.interaction)
+
+summary(with.interaction)
+
+# Random forest model
+rf.model <- randomForest(claim_paid ~ ., data = Claims_With_Earned_new, importance = TRUE)
+
+importance_values <- importance(rf.model)[, "%IncMSE"]
+
+par(mar = c(5,10,4,2))
+barplot(sort(importance_values, decreasing = TRUE), 
+        main = "%IncMSE Variable Importance of the Random Forest Model", 
+        horiz = TRUE, 
+        las = 1, 
+        xlab = "% Increase in MSE", 
+        col = "lightblue")
+

@@ -1,6 +1,8 @@
 # Load necessary libraries
 library(stats)
 library(dplyr)
+library(MASS)
+library(tidyverse)
 
 # Fit a GLM model on your data
 combined_data$claim_nb %>% summary
@@ -60,10 +62,50 @@ AIC(glm_model)
 
 
 
+#============================Frequency GLM======================================
+###Frequency Distribution
+
+plot(density(combined_data$frequency), 
+     main = "Density Plot with Normal Distribution", 
+     xlab = "Frequency", 
+     ylab = "Density", 
+     col = "blue", 
+     xlim = c(0,1))
 
 
+mean_val <- mean(combined_data$frequency)
+sd_val <- sd(combined_data$frequency)
+
+curve(dnorm(x, mean = mean_val, sd = sd_val), 
+      col = "red", 
+      lwd = 2, 
+      add = TRUE)
+legend("topright", legend = c("Data Density", "Normal Distribution"), 
+       col = c("blue", "red"), lwd = 2) ###Heavy Skew, implicates use of gamma distribution for the GLM
 
 
+#Training and Validation Set
+set.seed(123)
+
+training_val_frequency_id <- sample(1:nrow(combined_data), 0.7*nrow(combined_data)) #Rows of combined data to be used for the training set
+
+cols.to.remove <- which(colnames(combined_data) %in% c("severity", "pet_de_sexed_age","nb_suburb", "nb_postcode", "pet_age_years", "nb_breed_name_unique", "nb_breed_name_unique_concat", "exposure_id_1", "exposure_id"))
+
+training_val_frequency <- combined_data[training_val_frequency_id, -cols.to.remove] #training and validation set
+
+str(training_val_frequency)
 
 
+#Test Frequency
+test_frequency <- combined_data[-training_val_id, "frequency"]
 
+#Frequency GLM 
+frequency.glm <- glm(frequency ~., data = training_val_frequency, family = poisson(link = "log"))
+
+
+view(combined_data)
+str(combined_data)
+sd(combined_data$frequency)^2
+mean(combined_data$frequency)
+min(combined_data$frequency)
+frequency.glm$aic
