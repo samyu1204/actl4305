@@ -87,25 +87,50 @@ legend("topright", legend = c("Data Density", "Normal Distribution"),
 #Training and Validation Set
 set.seed(123)
 
-training_val_frequency_id <- sample(1:nrow(combined_data), 0.7*nrow(combined_data)) #Rows of combined data to be used for the training set
+cleaned_combined_data <- na.omit(combined_data)
 
-cols.to.remove <- which(colnames(combined_data) %in% c("severity", "pet_de_sexed_age","nb_suburb", "nb_postcode", "pet_age_years", "nb_breed_name_unique", "nb_breed_name_unique_concat", "exposure_id_1", "exposure_id"))
+cleaned_combined_data$pet_de_sexed <- factor(cleaned_combined_data$pet_de_sexed)
+cleaned_combined_data$pet_de_sexed <- as.logical(cleaned_combined_data$pet_de_sexed == "true")
 
-training_val_frequency <- combined_data[training_val_frequency_id, -cols.to.remove] #training and validation set
+
+training_val_frequency_id <- sample(1:nrow(cleaned_combined_data), 0.7*nrow(cleaned_combined_data)) #Rows of combined data to be used for the training set
+
+cols.to.remove <- which(colnames(cleaned_combined_data) %in% c("severity", "pet_de_sexed_age","nb_suburb", "nb_postcode", "pet_age_years", "nb_breed_name_unique", "nb_breed_name_unique_concat", "exposure_id_1", "exposure_id", "pet_is_switcher"))
+
+training_val_frequency <- cleaned_combined_data[training_val_frequency_id, -cols.to.remove] #training and validation set
+
+
+for (i in 1:nrow(training_val_frequency)) {
+  if(training_val_frequency$frequency[i] == 0) {
+    training_val_frequency$frequency[i] <- 0.001
+  }
+}
+
 
 str(training_val_frequency)
 
-
 #Test Frequency
-test_frequency <- combined_data[-training_val_id, "frequency"]
+test_frequency <- as.vector(cleaned_combined_data[-training_val_frequency_id, "frequency"])
+test.set <- cleaned_combined_data[-training_val_frequency_id, -c(cols.to.remove, which(colnames(cleaned_combined_data) == "frequency"))]
 
 #Frequency GLM 
-frequency.glm <- glm(frequency ~., data = training_val_frequency, family = poisson(link = "log"))
+glm_gamma_frequency <- glm(frequency ~., data = training_val_frequency, family = Gamma(link = "log"))
 
 
-view(combined_data)
-str(combined_data)
-sd(combined_data$frequency)^2
-mean(combined_data$frequency)
-min(combined_data$frequency)
-frequency.glm$aic
+#Frequency GLM fit
+(frequency_aic <- glm_gamma_frequency$aic)
+(frequency_mean_SSE <- mean(glm_gamma_frequency$residuals^2))
+(frequency_deviance <- glm_gamma_frequency$deviance)
+glm_gamma_frequency$coefficients
+
+#Frequency GLM test error
+
+frequency_glm_prediction <- predict(glm_gamma_frequency, newdata = test.set)
+
+test_frequency <- unlist(test_frequency)
+test_frequency_numeric <- as.numeric(test_frequency)
+
+(test.mse.frequency <- mean((frequency_glm_prediction-test_frequency)^2, na.rm = TRUE))
+
+
+###Problems: Predicts Negative claim frequency
