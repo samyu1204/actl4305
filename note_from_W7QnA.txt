@@ -1,0 +1,34 @@
+Modelling
+- short tailed: get away with Lognormal or gamma
+- if used poisson + severity => make sure mean and sd look okay for poisson
+- market now use tree-based model - UK / AUS company use GBM
+- for pet - less developed - not use GLM but use simpler model (tree?)
+
+Tips on making GBM interpretable:
+- use GBM, find key defining features - then plug those into the GLM
+- UK really strong model in competitive market -- take competitor prices; how u compete is important
+-- (but for this project - not permitted to use competitor price
+
+Tips (from the fetch actuary early career):
+- find homogeneous grouping - then comes up with the assessment of the risk
+- use tools - GBM , clustering tools - to find the grouping
+- even markov models are used to model state (healthy, sick)...
+
+How to balance model knowledge vs domain knowledge
+- data is relatively small - sense checking factors that are deems insignificant statiscally
+- do different models, has diff answer, consider why has diff answer, consider back factor is causal or correlated
+- sometimes less is more
+
+
+Some factors that you believe are founded on solid hypothesis can really give you a market advantage
+
+Tree models can give you dependent factors that we don't even think of 
+-- use the relationship / interaction found in the tree models and then implement it into the glm
+
+
+how we can understand how a person characteristic might affect claim can be crucial (hard to unlock)
+- e.g. person go to vet for every little thing vs "it'll be fine"
+
+Understand the actual underlying risk factor
+- e.g., walk a lot vs not - not big difference
+- house with stairs vs no stairs - big difference? (e.g., puppies falling from stairs = $18,000)
