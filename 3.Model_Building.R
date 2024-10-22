@@ -62,7 +62,14 @@ AIC(glm_model)
 
 
 
-#============================Frequency GLM======================================
+#============================Frequency GLM======================================###
+
+###Assessing Polynomial GLM####
+
+
+#>>>>Insert graphs of numeric predictors against claims frequency for polynomial relationships
+
+
 ###Frequency Distribution
 
 plot(density(combined_data$frequency), 
