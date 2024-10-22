@@ -113,23 +113,45 @@ str(training_val_frequency)
 test_frequency <- as.vector(cleaned_combined_data[-training_val_frequency_id, "frequency"])
 test.set <- cleaned_combined_data[-training_val_frequency_id, -c(cols.to.remove, which(colnames(cleaned_combined_data) == "frequency"))]
 
-#Frequency GLM 
+#Frequency GLM Gamma
 glm_gamma_frequency <- glm(frequency ~., data = training_val_frequency, family = Gamma(link = "log"))
 
+#Frequency GLM inverse gaussian
+glm_ig_frequency <- glm(frequency ~., data = training_val_frequency, family = inverse.gaussian(link = "log"))
 
-#Frequency GLM fit
-(frequency_aic <- glm_gamma_frequency$aic)
-(frequency_mean_SSE <- mean(glm_gamma_frequency$residuals^2))
-(frequency_deviance <- glm_gamma_frequency$deviance)
+###============Gamma Model Fit===================###
+
+#Training Fit
+(gamma_frequency_aic <- glm_gamma_frequency$aic)
+(gamma_frequency_mean_SSE <- mean(glm_gamma_frequency$residuals^2))
+(gamma_frequency_deviance <- glm_gamma_frequency$deviance)
 glm_gamma_frequency$coefficients
 
-#Frequency GLM test error
-
-frequency_glm_prediction <- predict(glm_gamma_frequency, newdata = test.set, type = "response")
+#Formatting test set
 
 test_frequency <- unlist(test_frequency)
 test_frequency_numeric <- as.numeric(test_frequency)
 
-(test.mse.frequency <- mean((frequency_glm_prediction-test_frequency_numeric)^2, na.rm = TRUE))
+#Test error
 
-plot(frequency_glm_prediction)
+frequency_glm_prediction_gamma <- predict(glm_gamma_frequency, newdata = test.set, type = "response")
+
+
+(test.mse.frequency_gamma <- mean((frequency_glm_prediction_gamma-test_frequency_numeric)^2, na.rm = TRUE))
+
+plot(frequency_glm_prediction_gamma)
+
+
+###=============Inverse Gaussian Model Fit===============###: Gamma is preferable over IG GLM
+
+##Training Fit
+(glm_ig_frequency_aic <- glm_ig_frequency$aic)
+(glm_gamma_frequency_mean_SSE <- mean(glm_ig_frequency$residuals^2))
+(glm_ig_frequency_deviance <-glm_ig_frequency$deviance)
+glm_ig_frequency$coefficients
+
+#Test Error
+glm_ig_frequency_prediction <- predict(glm_ig_frequency, newdata = test.set, type = "response")
+
+(test.mse.frequency_ig <- mean((glm_ig_frequency_prediction-test_frequency_numeric)^2, na.rm = TRUE))
+
