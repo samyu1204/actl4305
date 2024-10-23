@@ -7,15 +7,24 @@ library(xgboost)
 library(Matrix)
 library(lubridate)
 
+
+###3
+combined_data %>% group_by(claim_nb) %>% summarise(n = n(), prop = n()/nrow(combined_data)*100)
+7608 / 9175
+
+combined_data$severity <- combined_data$Total_claim_amount / combined_data$claim_nb
+
 ###### Ways to select feature for model building
 
-## 1. EDA
+## 1. EDA (not too reliable?)
 
 ## 2. Build Model - look at coef
 
 ## 3. Do lasso regression
 
 ## 4. forward / backward selection (stepAIC) / best subset selection
+
+## 5. build tree models and look at what is used
 
 
 ### other possible extra features
@@ -80,6 +89,30 @@ ggplot(combined_data, aes(x = age_bucket, y = severity)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+ggplot(combined_data, aes(x = age_bucket, y = severity)) +
+  geom_violin(fill = "skyblue") +  # Violin chart
+  ylim(0,2000) +
+  labs(title = "Average Severity by Owner's Age", 
+       x = "Owner's Age (Years)", 
+       y = "Average Severity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+combined_data %>% filter(claim_nb > 0) %>%
+  mutate(avg_sev_paid = Total_claim_paid / claim_nb) %>%
+ggplot(data = .) +
+  aes(x = owner_age_years, y = avg_sev_paid) +
+  geom_point(alpha = 0.5)
+  
+combined_data %>% filter(claim_nb > 0) %>%
+  mutate(avg_sev_paid = Total_claim_paid / claim_nb) %>%
+  group_by(owner_age_years)%>%
+  summarise(n = n(), avg_sev_paid_per_age = mean(avg_sev_paid)) %>%
+ggplot(data = .) +
+  aes(x = owner_age_years, y = avg_sev_paid_per_age, size = n) +
+  geom_point(alpha = 0.5) 
+
+
 ###==== Added on 20 Oct 2024
 
 ## changing some variable type
@@ -98,12 +131,13 @@ ggplot(data = combined_data) +
   aes(y = claim_freq, x = as.factor(pet_gender_de_sexed)) +
   geom_violin() +ylim(0,0.5)
 
-## checking
-glm_test <- glm(claim_nb ~ pet_gender_de_sexed + nb_contribution_excess_factor +
-                  age_bucket + owners_age + as.factor(nb_number_of_breeds),
-                data = combined_data, subset = train_indices,
-                offset = log(Total_Earned), family = poisson(link = "log"))
-summary(glm_test)
+combined_data %>% filter(claim_nb > 0) %>%
+  mutate(avg_sev_paid = Total_claim_paid / claim_nb) %>%
+ggplot(data = .) +
+  aes(x = as.factor(pet_gender_de_sexed), y = avg_sev_paid) +
+  geom_violin() +ylim(0,2000)
+
+
 ###===
 
 # ==============================================================================
@@ -155,6 +189,15 @@ combined_data$contribution_excess_interaction <- combined_data$nb_contribution *
 
 
 
+
+
+
+
+
+
+
+
+#=======================================================================================
 # 2. Get pet ownership density
 
 features <- c(
