@@ -12,7 +12,8 @@ library(lubridate)
 combined_data %>% group_by(claim_nb) %>% summarise(n = n(), prop = n()/nrow(combined_data)*100)
 7608 / 9175
 
-combined_data$severity <- combined_data$Total_claim_amount / combined_data$claim_nb
+#still deciding what to define as "severity"
+combined_data$severity <- combined_data$Total_claim_paid / combined_data$claim_nb
 
 ###### Ways to select feature for model building
 
@@ -159,7 +160,7 @@ combined_data$age_breed_bin <- as.numeric(cut(combined_data$log_age_breed_intera
 # Visualizing the relationship between binned Age * Breed Size and frequency
 ggplot(combined_data, aes(x = age_breed_bin, y = claim_freq)) +
   geom_bar(stat = "identity") +
-  labs(title = "Binned Age-Breed Interaction vs. Claim Frequency Frequency", 
+  labs(title = "Binned Age-Breed Interaction vs. Claim Frequency", 
        x = "Binned Age * Breed Size (Every 20)", 
        y = "Frequency") +
   theme_minimal() +
