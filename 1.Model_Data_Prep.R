@@ -34,6 +34,16 @@ UNSW_claims_data =
   UNSW_claims_data %>%
   filter(claim_paid>0 | claim_status %in% c("covered_not_paid", "covered_with_exclusions_not_paid"))
 
+## removing totally duplicated row
+## get distinct  
+UNSW_claims_data = #Removing Duplicate Rows in UNSW Claims Data
+  UNSW_claims_data %>%
+  distinct()
+
+##checking duplicated claim_id
+#duplicated_claim_id <- unique(UNSW_claims_data$claim_id[duplicated(UNSW_claims_data$claim_id)])
+#View(UNSW_claims_data %>% filter(claim_id %in% duplicated_claim_id))
+
 
 ### checking - delete later
 #zero_claim_paid <- UNSW_claims_data %>%
@@ -51,11 +61,6 @@ UNSW_claims_data =
 #duplicated_claim_row = UNSW_claims_data[duplicated(UNSW_claims_data),]
 #View(UNSW_claims_data %>% filter (claim_id %in% duplicated_claim_row$claim_id))
 
-## removing totally duplicated row
-## get distinct  
-UNSW_claims_data = #Removing Duplicate Rows in UNSW Claims Data
-  UNSW_claims_data %>%
-  distinct()
 
 
 
@@ -197,10 +202,23 @@ collapsed_UNSW_earned_data <- left_join(collapsed_UNSW_earned_data, exposure, by
 
 ### manipulate claim data
 ##############
+## aggregate claim by claim_id (will regard claims with same claim_id as 
+## claims from the same root cause (so will regard those claims as only 1 claim))
+## then
+### aggregate claim by exposure id
 claim_per_exposure_id = UNSW_claims_data %>%
   group_by(exposure_id) %>%
-  summarise(claim_nb = n(), Total_claim_amount = sum(total_claim_amount),
-            Total_claim_paid = sum(claim_paid), )
+  summarise(claim_nb = length(unique(claim_id)), Total_claim_amount = sum(total_claim_amount),
+            Total_claim_paid = sum(claim_paid))
+# claim_per_exposure_id_old = UNSW_claims_data %>%
+#   group_by(exposure_id) %>%
+#   summarise(claim_nb = n(), Total_claim_amount = sum(total_claim_amount),
+#             Total_claim_paid = sum(claim_paid))
+#sum(claim_per_exposure_id_old$claim_nb)
+
+
+sum(claim_per_exposure_id$claim_nb)
+
 
 
 ### Aggregate UNSW_earned_data and claim data (claim nb, claim paid and total amount)

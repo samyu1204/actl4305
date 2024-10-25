@@ -23,7 +23,8 @@ effect of doing this => slightly decrease 158 rows total earned units (hence inc
 2. collape using (group_by() and 
 
 - for claim data
-1. for each exposure id, find total claim_nb, claim_amount, claim_paid
+1. (new update 25/10) for each claims with same claim_id, assume from the same cause so only count the claims as 1 claim
+2. for each exposure id, find total claim_nb, claim_amount, claim_paid
 
 - then combined the two data using exposure_id as key
 
