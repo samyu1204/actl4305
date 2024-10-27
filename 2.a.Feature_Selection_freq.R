@@ -70,17 +70,18 @@ combined_data$quote_time_group_num <- as.numeric(combined_data$quote_time_group)
 # Breed interactions
 combined_data$age_breed_interaction <- combined_data$pet_age_months * combined_data$nb_average_breed_size
 
-# Person's age
+# Person's age (not necessary coz already in the given dataset?)
 combined_data$owners_age <- (as.numeric(floor(interval(as.Date(combined_data$person_dob), Sys.Date()) / years(1))))
 
 
-# Bucketing owner's age into 4 groups and labeling them with numerical values
-combined_data$age_bucket <- cut(combined_data$owners_age, 
+# Bucketing owner's age into 4?? (it's more here though) groups and labeling them with numerical values
+#change from owners_age to owners_age_years
+# 18-24, 25-29, 30-34, ..., 65+
+combined_data$age_bucket <- cut(combined_data$owner_age_years, 
                                 breaks = c(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, Inf),  # Define the age intervals
                                 labels = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19),  # Assign numerical labels for each bucket
                                 right = FALSE)  # Include lower bound, exclude upper bound
-
-combined_data$age_bucket <- pmin(pmax(combined_data$age_bucket, 5), 14)
+combined_data$age_bucket <- as.factor(pmin(pmax(as.numeric(combined_data$age_bucket), 5), 14))
 
 ggplot(combined_data, aes(x = age_bucket, y = severity)) +
   geom_bar(stat = "identity", fill = "skyblue") +  # Bar chart
@@ -119,13 +120,14 @@ ggplot(data = .) +
 ## changing some variable type
 combined_data$pet_de_sexed_age=as.factor(combined_data$pet_de_sexed_age)
 combined_data$nb_suburb = as.factor(combined_data$nb_suburb)
-combined_data$nb_contribution_excess_factor = as.factor(combined_data$nb_contribution_excess)
+combined_data$nb_contribution_excess = as.factor(combined_data$nb_contribution_excess)
 
 
 ## interaction term
 
 # pet_gender and pet_de_sexed
 combined_data$pet_gender_de_sexed <- paste(combined_data$pet_gender, combined_data$pet_de_sexed, sep = "_")
+combined_data$pet_gender_de_sexed <- as.factor(combined_data$pet_gender_de_sexed)
 (combined_data %>% select(pet_gender, pet_de_sexed, pet_gender_de_sexed))
 
 ggplot(data = combined_data) +
@@ -190,7 +192,9 @@ combined_data$contribution_excess_interaction <- combined_data$nb_contribution *
 
 
 
-
+ggplot(combined_data_full) +
+  aes(x = owner_age_years, y = claim_freq) +
+  geom_point()
 
 
 
