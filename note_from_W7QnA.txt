@@ -1,6 +1,6 @@
 Tips for severity modelling from tutor:
 - freq: can try zero inflated models
-- 
+- sev: model small claim and very big claim separately
 
 
 Modelling
