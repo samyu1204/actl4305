@@ -24,7 +24,8 @@ features <- c(
   'pet_age_months',
   'nb_address_type_adj',
   'nb_breed_type',
-  'is_multi_pet_plan'
+  'is_multi_pet_plan',
+  'qi'
 )
 
 features <- c(
@@ -32,7 +33,8 @@ features <- c(
   'pet_age_months',
   'nb_excess',
   'owner_age_years',
-  'nb_address_type_adj'
+  'nb_address_type_adj',
+  'density'
 )
 # hist(combined_data$severity, main = "Histogram of Severity", xlab = "Severity", breaks = 30)
 
@@ -43,6 +45,7 @@ formula <- as.formula(paste("severity", "~", paste(features, collapse = " + "), 
 glm_model <- glm(formula, data = severity_data, family = Gamma(link = "log"))
 
 # Summary of the GLM model to see the coefficients and model fit
+summary(glm_model)
 
 stepwise_model <- step(glm_model, direction = "both")
 final_formula <- formula(stepwise_model)

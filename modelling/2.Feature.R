@@ -137,14 +137,23 @@ ggplot(combined_data, aes(x = nb_breed_trait_num_encoded, y = severity)) +
        y = "Average Severity") +
   theme_minimal()
 
+# =========================================================================================
+# Postcode features
 
-# Plot the data
-ggplot(summary_data, aes(x = nb_breed_trait_num_encoded, y = avg_severity)) +
+
+summarized_data <- combined_data %>%
+  group_by(qi) %>%
+  summarize(avg_severity = mean(severity, na.rm = TRUE))
+
+ggplot(summarized_data, aes(x = qi, y = avg_severity)) +
   geom_col(fill = "steelblue") +
-  labs(title = "Average Severity by Breed Trait",
-       x = "Breed Trait Group",
+  labs(title = "Average Severity by QI Level",
+       x = "QI Level",
        y = "Average Severity") +
   theme_minimal()
+
+
+
 
 # ========================================================================================
 # Visualizing the relationship between binned Age * Breed Size and frequency

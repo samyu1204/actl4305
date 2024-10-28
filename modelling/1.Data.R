@@ -184,24 +184,17 @@ combined_data = combined_data %>%
   filter(Total_Earned > 0) %>%
   mutate(claim_freq = claim_nb/Total_Earned)
 
-# ========================================================================================
-# Check columns with NA
-na_columns_remaining <- colnames(combined_data)[colSums(is.na(combined_data)) > 0]
-na_columns_remaining
+# Clear up postcode
+combined_data$nb_postcode <- sprintf("%04s", combined_data$nb_postcode)
 
-for (col in colnames(combined_data)) {
-  if (is.numeric(combined_data[[col]])) {
-    combined_data[[col]][is.na(combined_data[[col]])] <- mean(combined_data[[col]], na.rm = TRUE)
-  }
-}
+
+rm(list = setdiff(ls(), "combined_data"))
 
 # =================================================================================
 # Merge SA2 code onto it
 sa2_mapping <- read_excel("data/sa2_mapping.xlsx")
-names(combined_data$nb_post)
 
-combined_data$nb_postcode <- as.numeric(combined_data$nb_postcode)
-sa2_mapping$nb_postcode <- as.numeric(sa2_mapping$nb_postcode)
+sa2_mapping$nb_postcode <- as.character(sa2_mapping$nb_postcode)
 
 sa2_mapping <- sa2_mapping %>%
   group_by(nb_postcode) %>%
@@ -210,8 +203,29 @@ sa2_mapping <- sa2_mapping %>%
 sa2_mapping_selected <- sa2_mapping %>%
   select(nb_postcode, SA2_CODE)
 
-# Perform the left join
+# Perform the left join to get SA2 Code
 combined_data <- left_join(combined_data, sa2_mapping_selected, by = "nb_postcode")
 
-intersect(combined_data$nb_postcode, sa2_mapping$nb_postcode)
+
+names(combined_data)[names(combined_data) == "SA2_CODE"] <- "sa2_code"
+
+combined_data$sa2_code <- as.character(combined_data$sa2_code)
+
+
+# QI quality indicator of the postcode
+qi <- read_excel("data/QI.xlsx")
+
+qi <- qi %>%
+  group_by(sa2_code) %>%
+  slice(1)
+
+
+# Join onto 
+combined_data <- left_join(combined_data, qi, by = "sa2_code")
+
+# Join pop density
+sa2_pop_density <- read_excel("data/sa2_pop_density.xlsx")
+sa2_pop_density$sa2_code <- as.character(sa2_pop_density$sa2_code)
+combined_data <- left_join(combined_data, sa2_pop_density, by = "sa2_code")
+
 
