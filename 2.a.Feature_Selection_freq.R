@@ -8,12 +8,26 @@ library(Matrix)
 library(lubridate)
 
 
-###3
+###
 combined_data %>% group_by(claim_nb) %>% summarise(n = n(), prop = n()/nrow(combined_data)*100)
 7608 / 9175
 
 #still deciding what to define as "severity"
-combined_data$severity <- combined_data$Total_claim_paid / combined_data$claim_nb
+# remember there is 0 total claim paid
+sum(combined_data$Total_claim_paid == 0 & combined_data$claim_nb > 0) # = 18
+sum(combined_data$Total_claim_paid > 0 & combined_data$claim_nb == 0) # should be and is 0
+
+combined_data$severity <- ifelse(combined_data$Total_claim_paid > 0, 
+                                 combined_data$Total_claim_paid / combined_data$claim_nb,
+                                 NA)
+min(combined_data$severity, na.rm = TRUE)
+max(combined_data$severity, na.rm = TRUE)
+
+combined_data %>% filter(is.na(severity) == FALSE) %>% 
+ggplot(data = .) + 
+  aes(x = severity) + 
+  geom_density(fill = "lightblue", col = "grey") +
+  theme_bw()
 
 ###### Ways to select feature for model building
 
@@ -40,6 +54,35 @@ combined_data$severity <- combined_data$Total_claim_paid / combined_data$claim_n
 
 # ==============================================================================
 # Feature engineering
+
+# change pet age years to the minimum to 7+ years instead of 7,8,9,10 (due to smaller data in bigger years)
+#combined_data$pet_age_years[1:2] %in% c("1 years", "2 years") testing
+combined_data$pet_age_years <- ifelse(combined_data$pet_age_years %in% c("7 years", "8 years", "9 years", "10 years"),
+                                      "7+ years", as.character(combined_data$pet_age_years))
+combined_data$pet_age_years <- as.factor(combined_data$pet_age_years)
+
+
+## Reclassifying nb_breed_trait for trait that have small sample
+combined_data$nb_breed_trait <- as.character(combined_data$nb_breed_trait)
+
+#1. making "" breed trait to cross breed trait (accroding to nb breed type)
+combined_data$nb_breed_trait <- ifelse(combined_data$nb_breed_trait %in% c(""),
+                                       "cross",
+                                       combined_data$nb_breed_trait)
+
+
+#2. combined bull to brachycephalic
+combined_data$nb_breed_trait <- ifelse(combined_data$nb_breed_trait %in% c("bull"),
+                                       "brachycephalic",
+                                       combined_data$nb_breed_trait)
+
+#3. combined the dog trait with small sample (less than 100
+combined_data$nb_breed_trait <- ifelse(combined_data$nb_breed_trait %in% c("traditional", "setter", "pinscher", "white fluffy"),
+                                       "etc_small_sample",
+                                       combined_data$nb_breed_trait)
+
+combined_data$nb_breed_trait <- as.factor(combined_data$nb_breed_trait)
+
 # Numerical variable conversion
 combined_data$pet_is_male <- ifelse(combined_data$pet_gender == 'male', 1, 0)
 
@@ -128,7 +171,7 @@ combined_data$nb_contribution_excess = as.factor(combined_data$nb_contribution_e
 # pet_gender and pet_de_sexed
 combined_data$pet_gender_de_sexed <- paste(combined_data$pet_gender, combined_data$pet_de_sexed, sep = "_")
 combined_data$pet_gender_de_sexed <- as.factor(combined_data$pet_gender_de_sexed)
-(combined_data %>% select(pet_gender, pet_de_sexed, pet_gender_de_sexed))
+
 
 ggplot(data = combined_data) +
   aes(y = claim_freq, x = as.factor(pet_gender_de_sexed)) +
@@ -191,10 +234,6 @@ combined_data$owner_pet_age_interaction <- combined_data$owner_age_years * (comb
 combined_data$contribution_excess_interaction <- combined_data$nb_contribution * combined_data$nb_excess
 
 
-
-ggplot(combined_data_full) +
-  aes(x = owner_age_years, y = claim_freq) +
-  geom_point()
 
 
 
