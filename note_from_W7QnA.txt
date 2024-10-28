@@ -1,3 +1,8 @@
+Tips for severity modelling from tutor:
+- freq: can try zero inflated models
+- 
+
+
 Modelling
 - short tailed (as in claim payment will be over in 1-2 years unlike liability (worker comp) insurance that can last 10+ years)
 --: get away with Lognormal or gamma
