@@ -29,7 +29,8 @@ UNSW_claims_data =
   filter(tenure >= 0, total_claim_amount>0)
 
 #Removing negative tenures and 0 claim_paid for covered already paid
-## keep not paid cover for now
+## keep not paid cover for now (in case want to model total_claim_amount)
+## however recommended to just model claim_paid
 UNSW_claims_data = 
   UNSW_claims_data %>%
   filter(claim_paid>0 | claim_status %in% c("covered_not_paid", "covered_with_exclusions_not_paid"))
@@ -40,9 +41,44 @@ UNSW_claims_data = #Removing Duplicate Rows in UNSW Claims Data
   UNSW_claims_data %>%
   distinct()
 
+
+### investigation on UNSW_claims_data
+UNSW_claims_data %>% count(condition_category)
+
+ggplot(UNSW_claims_data) +
+  aes(x = condition_category, y = claim_paid) +
+  geom_violin()
+
+UNSW_claims_data %>% group_by(condition_category) %>%
+  summarise(n = n(), avg_claim_paid = mean(claim_paid), sd_claim_paid = sd(claim_paid)) %>%
+  arrange(desc(avg_claim_paid))
+
+## want to investigate which age more prone to what
+# claims_with_pet_data <- left_join(UNSW_claims_data, 
+#                                   collapsed_UNSW_earned_data[,c("pet_age_years", "nb_breed_trait", "nb_breed_name_unique_concat", "exposure_id")], 
+#                                   by = c("exposure_id"))
+
+
+## find claim paid distribution per pet_age_years
+# ggplot(claims_with_pet_data) +
+#   aes(x = pet_age_years, y = claim_paid) +
+#   geom_violin()
+
+
+
+## find age distribution per condition category
+# for (i in 1:length(unique(claims_with_pet_data$condition_category))) {
+#   claims_with_pet_data %>% filter(condition_category == claims_with_pet_data$condition_category[2]) %>%
+#   ggplot(data = .) +
+#     aes(x = pet_age_years, y = claim_paid) +
+#     geom_violin() + title(main = as.character(claims_with_pet_data$condition_category[2]))
+# }
+# 
+# class(as.character(claims_with_pet_data$condition_category[1]))
+
 ##checking duplicated claim_id
-#duplicated_claim_id <- unique(UNSW_claims_data$claim_id[duplicated(UNSW_claims_data$claim_id)])
-#View(UNSW_claims_data %>% filter(claim_id %in% duplicated_claim_id))
+duplicated_claim_id <- unique(UNSW_claims_data$claim_id[duplicated(UNSW_claims_data$claim_id)])
+View(UNSW_claims_data %>% filter(claim_id %in% duplicated_claim_id))
 
 
 ### checking - delete later
@@ -245,6 +281,7 @@ for (col in colnames(combined_data)) {
   }
 }
 
+length(unique(UNSW_claims_data$exposure_id))
 #==========================================================================
 
 ## checking claim vs month and claim vs tenure -- not important rn, will do later
