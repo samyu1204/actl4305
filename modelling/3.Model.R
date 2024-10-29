@@ -7,6 +7,10 @@ library(gamlr)
 library(randomForest)
 library(MASS)
 library(glmnet)
+library(tweedie)
+library(statmod)
+library(caret)
+
 
 # Fit a GLM model on your data
 combined_data$claim_nb %>% summary
@@ -159,8 +163,6 @@ freq_test <- frequency.model.data[-freq_training_val_index, ]
 
 
 
-
-
 ######random forest model
 freq_rf <- randomForest(claim_freq ~., data = freq_training_val, ntree = 100, importance = TRUE)
 
@@ -170,10 +172,8 @@ freq_rf <- randomForest(claim_freq ~., data = freq_training_val, ntree = 100, im
 rf_training_pridictions <- predict(freq_rf, newdata = freq_training_val)
 rf_training_pridictions <- as.vector(rf_training_pridictions)
 
-training_mse_rf <- mean((rf_training_pridictions - freq_training_val$claim_freq)^2)
+training_mse_rf <- mean((rf_training_pridictions - freq_training_val$claim_freq)^2) 
 
-
-freq_rf$mse
 #Variable Importance
 importance_values <- importance(freq_rf)
 mse_importance <- importance_values[, "%IncMSE"]
@@ -208,7 +208,10 @@ full_frequency_LR_summary <- summary(full_frequency_LR)
 
 assumption_summaryplot <- plot(full_frequency_LR)
 
-full_freq_LR_training_MSE <- mean(full_frequency_LR$residuals^2)
+predictions <- predict(full_frequency_LR, newdata = freq_training_val)
+
+full_freq_LR_training_MSE <- mean((freq_training_val$claim_freq - predictions)^2)
+
 
 full_frequency_LR_summary$adj.r.squared
 
@@ -231,7 +234,8 @@ stepwise_model_freq_summary <- summary(stepwise_model_freq)
 
 stepwise_model_freq_summary$adj.r.squared
 
-stepwise_model_freq_training_MSE <- mean(stepwise_model_freq_summary$residuals^2)
+predictions_stepwise <- predict(stepwise_model_freq, newdata = freq_training_val)
+stepwise_model_freq_training_MSE <- mean((freq_training_val$claim_freq - predictions_stepwise)^2)
 
 AIC(stepwise_model_freq)
 
@@ -257,6 +261,11 @@ final_freq_lasso_model <- glmnet(X.training, Y.training, lambda = lasso_optimal_
 coef(final_freq_lasso_model)
 
 
+lasso_freq_predictions_training <- predict(final_freq_lasso_model, newx = X.training, type = "response")
+lasso_freq_predictions_training <- as.vector(lasso_freq_predictions_training)
+training_lasso_MSE <- mean((lasso_freq_predictions_training-Y.training)^2)
+
+
 #Test Performance
 x.test <- model.matrix(claim_freq~., data = freq_test)
 y.test <- freq_test$claim_freq
@@ -273,6 +282,11 @@ freq_ridge_model <- cv.glmnet(X.training, Y.training, alpha = 0)
 ridge_optimal_lambda <- freq_ridge_model$lambda.min
 
 final_ridge_model_freq <- glmnet(X.training, Y.training, lambda = ridge_optimal_lambda, alpha = 0)
+
+ridge_freq_predictions_training <- predict(final_ridge_model_freq, newx = X.training, type = "response")
+ridge_freq_predictions_training <- as.vector(ridge_freq_predictions_training)
+training_ridge_MSE <- mean((ridge_freq_predictions_training-Y.training)^2)
+
 
 coef(final_ridge_model_freq)
 
@@ -303,6 +317,11 @@ final_elastic_net_model <- glmnet(X.training, Y.training, alpha = best_alpha, la
 coef(final_elastic_net_model)
 summary(final_elastic_net_model)
 
+
+final_elastic_net_model_training_predictions <- predict(final_elastic_net_model, newx = X.training, type = "response")
+final_elastic_net_model_training_predictions <- as.vector(final_elastic_net_model_training_predictions)
+elastic_training_MSE <- mean((final_elastic_net_model_training_predictions-Y.training)^2)
+
 elastic_net_cve <- min(results$mse)
 
 ##test performance
@@ -329,33 +348,45 @@ ggplot(frequency.model.data, aes(x = claim_freq)) +
   xlim(0, 1)
 
 
-## Shifting observations were claim_freq is observed to be 0 such that gamma is appropriate
+###tweedie GLM####
 
+var_powers <- seq(1.1, 1.9, by = 0.1)
 
-freq_gamma_training_val <- freq_training_val
+mse_results <- numeric(length(var_powers))
 
-for (i in 1:nrow(freq_gamma_training_val)) {
-  if (freq_gamma_training_val$claim_freq[i] == 0) {
-    freq_gamma_training_val$claim_freq[i] <- 0.001
-  }
+train_control <- trainControl(method = "cv", number = 5) 
+
+for (i in seq_along(var_powers)) {
+  current_power <- var_powers[i]
   
+  model <- train(
+    claim_freq ~ ., data = freq_training_val,  
+    method = "glm",
+    family = tweedie(var.power = current_power, link = "log"),
+    trControl = train_control,
+    metric = "RMSE"  
+  )
+    mse_results[i] <- mean(model$resample$RMSE^2)
 }
 
-#scaling predictors
-#freq_gamma_training_val <- freq_gamma_training_val %>%
-#mutate(across(where(is.numeric) & !starts_with("claim_freq"), scale))
+optimal_var_power <- var_powers[which.min(mse_results)]
+optimal_var_power
+
+tweedie_freq_model <- glm(claim_freq ~ ., data = freq_training_val, family = tweedie(var.power = optimal_var_power, link = "log"))
+
+summary(tweedie_freq_model)
+
+#Perfomance on the training data
+tweedie_freq_model_training_predictions <- predict(tweedie_freq_model,  newdata = freq_training_val, type = "response")
+tweedie_freq_model_training_predictions <- as.vector(tweedie_freq_model_training_predictions)
+
+training_MSE_tweedie <- mean((tweedie_freq_model_training_predictions-freq_training_val$claim_freq)^2)
 
 
-###gamma frequency glm###:NOT WORKING!!!
+#Performance on the test data 
+tweedie_freq_model_prediction <- predict(tweedie_freq_model,  newdata = freq_test, type = "response")
+tweedie_freq_model_prediction <- as.vector(tweedie_freq_model_prediction)
 
-gamma_frequency_glm <- glm(claim_freq ~., data = freq_gamma_training_val, family = Gamma(link = "log"))
-
-
-#inverse gaussian
-inverse_gaussian_glm <- glm(claim_freq ~., data = freq_gamma_training_val, family = inverse.gaussian(link = "log"))
-
-
-
-
+test_MSE_tweedie <- mean((tweedie_freq_model_prediction-freq_test$claim_freq)^2)
 
 
