@@ -154,6 +154,5 @@ ggplot(summarized_data, aes(x = qi, y = avg_severity)) +
 
 
 
-
 # ========================================================================================
 # Visualizing the relationship between binned Age * Breed Size and frequency

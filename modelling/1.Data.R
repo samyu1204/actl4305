@@ -3,7 +3,6 @@ library(ggplot2)
 library(lubridate)
 library(readxl)
 
-
 setwd("C:/Users/samyu/code/actl4305")
 
 UNSW_claims_data_raw = read.csv("data/UNSW_claims_data.csv", header=TRUE )
@@ -229,3 +228,4 @@ sa2_pop_density$sa2_code <- as.character(sa2_pop_density$sa2_code)
 combined_data <- left_join(combined_data, sa2_pop_density, by = "sa2_code")
 
 
+view(combined_data)
