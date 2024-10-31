@@ -8,10 +8,10 @@ library(statmod)
 library(forcats)
 library(tidyr)
 library(randomForest)
-library(MASS)
 library(glmnet)
 library(caret)
 library(gbm)
+library(MASS)
 
 # Set seed for the run
 set.seed(123)
@@ -229,12 +229,20 @@ ggplot(severity_data, aes(x = severity, y = new_residuals)) +
 # Final predictions after combining GLM and GBM
 severity_data$final_pred_severity <- severity_data$pred_glm + severity_data$pred_gbm_diff
 
+<<<<<<< HEAD
 # Final model MSE
 mse_final <- mean((severity_data$severity - severity_data$final_pred_severity)^2)
+=======
+
+
+
+#################Claim Frequency Modelling#################
+
+>>>>>>> 07a16dce695212a8c10d06700d9615c51f8316da
 
 vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_switcher", "nb_address_type_adj", "nb_suburb", "nb_state", "person_dob", "owner_age_years", "nb_breed_type",
                     "nb_breed_trait", "nb_breed_name_unique", "nb_breed_name_unique_concat", "exposure_id_1", "earned_units", "Total_Earned", "claim_nb", "Total_claim_amount", 
-                    "Total_claim_paid", "severity", "frequency", "is_multi_plan", "quote_time_group", "sa2_code", "nb_postcode")
+                    "Total_claim_paid", "severity", "frequency", "is_multi_plan", "quote_time_group", "sa2_code", "nb_postcode", "is_multi_pet_plan", "pet_age_year")
 
 frequency.model.data <- combined_data[,-which(colnames(combined_data) %in% vars.to.remove)]
 
@@ -445,7 +453,7 @@ ggplot(frequency.model.data, aes(x = claim_freq)) +
 # GLM - Tweedie
 # ==================================================================================================
 
-var_powers <- seq(1.1, 1.9, by = 0.1)
+var_powers <- seq(1, 2, by = 0.1)
 
 mse_results <- numeric(length(var_powers))
 
@@ -547,4 +555,39 @@ tweedie_freq_model_prediction <- as.vector(tweedie_freq_model_prediction)
 
 test_MSE_tweedie <- mean((tweedie_freq_model_prediction-freq_test$claim_freq)^2)
 
+sdu <- summary(tweedie_freq_model)
 
+tweedie_freq_model$deviance
+
+
+#ADJ R^2
+RSS <- sum((freq_training_val$claim_freq - predictions)^2)
+
+R2 <- 1 - (RSS / SST)
+
+n <- nrow(freq_training_val)
+k <- length(coef(tweedie_freq_model)) - 1  
+
+R2_adj <- 1 - ((1 - R2) * (n - 1) / (n - k - 1))
+
+
+##Assessing Residuals
+fitted_values <- tweedie_freq_model$fitted.values
+
+# Calculate residuals
+residuals <- tweedie_freq_model$residuals
+
+ggplot(data.frame(Fitted = fitted_values, Residuals = residuals), aes(x = Fitted, y = Residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals") +
+  theme_minimal()
+
+
+#Actual Vs Predicted
+
+ggplot(data.frame(Actual = freq_training_val$claim_freq, residuals = tweedie_freq_model$residuals), aes(x = freq_training_val$claim_freq, y = residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Actual Frequency vs Residuals", x = "Actual Values", y = "Residuals") +
+  theme_minimal() 
