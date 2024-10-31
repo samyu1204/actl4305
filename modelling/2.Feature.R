@@ -10,10 +10,18 @@ library(lubridate)
 
 # target columns:
 # Create predicting columns
-# combined_data$severity <- pmin(combined_data$Total_claim_amount / combined_data$claim_nb, 700)
-combined_data$severity <- log(combined_data$Total_claim_amount / combined_data$claim_nb)
-combined_data$frequency <- combined_data$claim_freq
+combined_data$severity <- pmin(combined_data$Total_claim_amount / combined_data$claim_nb, 3600)
+combined_data$severity <- combined_data$Total_claim_amount / combined_data$claim_nb
+combined_data$severity %>% summary
 
+ggplot(combined_data, aes(x = severity)) +
+  geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Severity (Log Scale)", x = "Severity (log scale)", y = "Frequency") +
+  theme_minimal()
+
+combined_data$severity <- combined_data$Total_claim_amount / combined_data$claim_nb
+combined_data$frequency <- combined_data$claim_freq
+quantile(severity_data$severity, 0.9, na.rm = TRUE)
 # ==============================================================================
 # Feature engineering
 # Numerical variable conversion
