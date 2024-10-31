@@ -6,6 +6,9 @@ library(ggplot2)
 library(xgboost)
 library(Matrix)
 library(lubridate)
+library(tidyverse)
+library(randomForest)
+library(glmnet)
 
 # ==============================================================================
 # Feature engineering
@@ -250,6 +253,12 @@ without.interaction <- lm(claim_paid ~ ., data = Claims_With_Earned_new[, -which
 # Compare models using AIC
 AIC(with.interaction, without.interaction)
 
+summary_with <- summary(with.interaction)
+summary_without <- summary(without.interaction)
+
+summary_with$adj.r.squared
+summary_without$adj.r.squared
+
 summary(with.interaction)
 
 # Random forest model
@@ -265,3 +274,15 @@ barplot(sort(importance_values, decreasing = TRUE),
         xlab = "% Increase in MSE", 
         col = "lightblue")
 
+
+
+
+
+
+
+
+
+library(tidyverse )
+
+
+view(combined_data)

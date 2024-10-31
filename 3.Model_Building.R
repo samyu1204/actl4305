@@ -67,6 +67,8 @@ AIC(glm_model)
 ###Assessing Polynomial GLM####
 
 
+
+
 #>>>>Insert graphs of numeric predictors against claims frequency for polynomial relationships
 
 
@@ -161,4 +163,21 @@ glm_ig_frequency$coefficients
 glm_ig_frequency_prediction <- predict(glm_ig_frequency, newdata = test.set, type = "response")
 
 (test.mse.frequency_ig <- mean((glm_ig_frequency_prediction-test_frequency_numeric)^2, na.rm = TRUE))
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Creating Model Data Set
+
+
+
 

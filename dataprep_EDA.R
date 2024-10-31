@@ -357,3 +357,4 @@ ggplot(data = ., mapping = aes(x = fct_rev(fct_reorder(nb_breed_type, premium)),
 #####
 hist(combined_data$claim_)
  
+view(combined_data)
