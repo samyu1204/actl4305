@@ -106,7 +106,7 @@ UNSW_earned_data$nb_address_type_adj = as.factor(UNSW_earned_data$nb_address_typ
 UNSW_earned_data$nb_breed_name_unique = as.factor(UNSW_earned_data$nb_breed_name_unique)
 UNSW_earned_data$nb_breed_name_unique_concat = as.factor(UNSW_earned_data$nb_breed_name_unique_concat)
 UNSW_earned_data$is_multi_pet_plan = as.factor(UNSW_earned_data$is_multi_pet_plan)
-UNSW_earned_data = UNSW_earned_data %>% select(-pet_age_years, -X)
+UNSW_earned_data = UNSW_earned_data %>% dplyr::select(-pet_age_years, -X)
 UNSW_earned_data$nb_state = as.factor(UNSW_earned_data$nb_state)
 UNSW_earned_data$person_dob = as.Date(UNSW_earned_data$person_dob)
 UNSW_earned_data$nb_breed_type = as.factor(UNSW_earned_data$nb_breed_type)
@@ -119,7 +119,7 @@ UNSW_earned_data$nb_postcode= as.factor(UNSW_earned_data$nb_postcode)
 ###Removing useless row number column
 UNSW_earned_data = 
   UNSW_earned_data %>%
-  select(-row_num)
+  dplyr::select(-row_num)
 
 ## check for duplicate
 sum(duplicated(UNSW_earned_data))
@@ -158,7 +158,7 @@ UNSW_claims_data =
 ## check for duplicated claim because of owner double claim / other owner related issues
 ## many dimension ## ignore for now
 UNSW_claim_check = UNSW_claims_data %>%
-  select(exposure_id, total_claim_amount)
+  dplyr::select(exposure_id, total_claim_amount)
 
 ##
 claim_per_exposure_id = UNSW_claims_data %>%
@@ -196,11 +196,11 @@ sa2_mapping <- read_excel("data/sa2_mapping.xlsx")
 sa2_mapping$nb_postcode <- as.character(sa2_mapping$nb_postcode)
 
 sa2_mapping <- sa2_mapping %>%
-  group_by(nb_postcode) %>%
-  slice(1)
+  dplyr::group_by(nb_postcode) %>%
+  dplyr::slice(1)
 
 sa2_mapping_selected <- sa2_mapping %>%
-  select(nb_postcode, SA2_CODE)
+  dplyr::select(nb_postcode, SA2_CODE)
 
 # Perform the left join to get SA2 Code
 combined_data <- left_join(combined_data, sa2_mapping_selected, by = "nb_postcode")
@@ -215,8 +215,8 @@ combined_data$sa2_code <- as.character(combined_data$sa2_code)
 qi <- read_excel("data/QI.xlsx")
 
 qi <- qi %>%
-  group_by(sa2_code) %>%
-  slice(1)
+  dplyr::group_by(sa2_code) %>%
+  dplyr::slice(1)
 
 
 # Join onto 
@@ -226,6 +226,3 @@ combined_data <- left_join(combined_data, qi, by = "sa2_code")
 sa2_pop_density <- read_excel("data/sa2_pop_density.xlsx")
 sa2_pop_density$sa2_code <- as.character(sa2_pop_density$sa2_code)
 combined_data <- left_join(combined_data, sa2_pop_density, by = "sa2_code")
-
-
-view(combined_data)

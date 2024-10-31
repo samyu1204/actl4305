@@ -11,13 +11,13 @@ library(randomForest)
 library(MASS)
 library(glmnet)
 library(caret)
+library(gbm)
 
-seed(123)
-# Fit a GLM model on your data
-combined_data$severity%>% summary
+# Set seed for the run
+set.seed(123)
 
+# Prepare severity data
 severity_data <- combined_data %>% filter(severity > 0)
-
 
 # Calculate the mean, ignoring NA values
 mean_value <- mean(severity_data$owner_age_years, na.rm = TRUE)
@@ -26,23 +26,7 @@ severity_data$owner_age_years[is.na(severity_data$owner_age_years)] <- mean_valu
 mean_value <- mean(severity_data$density, na.rm = TRUE)
 severity_data$density[is.na(severity_data$density)] <- mean_value
 
-# features <- c(
-#   'nb_state',
-#   'nb_breed_trait_num_encoded',
-#   'pet_age_months',
-#   'nb_excess',
-#   'age_breed_interaction',
-#   'nb_contribution',
-#   'owner_age_years',
-#   'pet_gender',
-#   'pet_de_sexed',
-#   'pet_age_months',
-#   'nb_address_type_adj',
-#   'nb_breed_type',
-#   'is_multi_pet_plan',
-#   'qi'
-# )
-
+# Feature list
 features <- c(
   'nb_breed_trait_num_encoded',
   'pet_age_months',
@@ -53,15 +37,39 @@ features <- c(
 )
 
 
-# hist(combined_data$severity, main = "Histogram of Severity", xlab = "Severity", breaks = 30)
-
 # Join the features to form a formula with underscores between feature names
 formula <- as.formula(paste("severity", "~", paste(features, collapse = " + "), sep = ""))
 
 # Fit the GLM model
-glm_model <- glm(formula, family = Gamma(link = "log"), data = severity_data)
+glm_model_severity <- glm(formula, family = Gamma(link = "log"), data = severity_data)
 
-# Summary of the GLM model to see the coefficients and model fit
+# Gaussian GLM 
+glm_model <- glm(formula, family = gaussian, data = severity_data)
+
+# Tweedie GLM 
+var_powers <- seq(1.1, 1.9, by = 0.1)
+
+mse_results <- numeric(length(var_powers))
+
+train_control <- trainControl(method = "cv", number = 5) 
+
+for (i in seq_along(var_powers)) {
+  current_power <- var_powers[i]
+  
+  glm_model <- train(
+    formula, data = severity_data,  
+    method = "glm",
+    family = tweedie(var.power = current_power, link = "log"),
+    trControl = train_control,
+    metric = "RMSE"  
+  )
+  mse_results[i] <- mean(glm_model$resample$RMSE^2)
+}
+
+optimal_var_power <- var_powers[which.min(mse_results)]
+optimal_var_power
+
+# Summary
 summary(glm_model)
 
 stepwise_model <- step(glm_model, direction = "both")
@@ -82,9 +90,6 @@ actual_severity <- severity_data$severity
 # Calculate residuals as the difference between actual and predicted values
 actual_residuals <- actual_severity - predict(glm_model, type = "response")
 
-sqrt(mean((severity_data$severity - predict(glm_model, type = "response"))^2))  # RMSE calculation
-
-
 # Create a data frame with actual severity and residuals for easy plotting
 residual_data <- data.frame(
   Actual_Severity = actual_severity,
@@ -103,49 +108,60 @@ ggplot(residual_data, aes(x = Actual_Severity, y = Residuals)) +
   theme_minimal(base_size = 15) +  # Clean minimal theme with larger base text
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold"),  # Center and bold title
-    axis.title.x = element_text(margin = margin(t = 10)),   # Adjust x-axis label margin
-    axis.title.y = element_text(margin = margin(r = 10))    # Adjust y-axis label margin
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10)),   # Adjust x-axis label margin
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10))    # Adjust y-axis label margin
   )
 
+# MSE
+mse_glm <- mean((actual_residuals)^2)
 
+# ==================================================================================================
+# GBM Training - Severity GBM
+# ==================================================================================================
 
-library(gbm)
+# Calculate residuals from the initial GLM model
 severity_data$severity_difference <- severity_data$severity - predict(glm_model, type = "response")
 
+# Define the formula
 formula <- as.formula(paste("severity_difference", "~", paste(features, collapse = " + "), sep = ""))
 
-# Load necessary libraries
-library(caret)
-library(gbm)
+# Create a weight vector based on severity values (example: higher weights for top 25% of severity values)
+severity_data$weights <- ifelse(severity_data$severity > quantile(severity_data$severity, 0.75), 1.5, 1)
 
 # Define the hyperparameter grid
 hyper_grid <- expand.grid(
-  n.trees = c(500, 1000, 1500),       # Number of trees
-  interaction.depth = c(2, 3, 4),     # Depth of each tree
-  shrinkage = c(0.01, 0.05, 0.1),     # Learning rate
-  n.minobsinnode = c(5, 10)           # Minimum number of observations in terminal nodes
+  n.trees = c(500, 1000, 1500, 2000, 2500, 3000),
+  interaction.depth = c(2),
+  shrinkage = c(0.01),
+  n.minobsinnode = c(10, 20, 30)
 )
 
 # Set up cross-validation
 train_control <- trainControl(method = "cv", number = 5, verboseIter = FALSE)
 
-# Train the GBM model using caret with cross-validation
-gbm_tuned <- train(
+# Train the GBM model using caret with cross-validation and weights
+gbm_tuned_severity <- train(
   formula,
   data = severity_data,
   method = "gbm",
   distribution = "gaussian",
   trControl = train_control,
   tuneGrid = hyper_grid,
+  weights = severity_data$weights,
   verbose = FALSE
 )
 
+# Make prediction and compare on the GBM
+# Make predictions using the GBM model for severity > 1000
+severity_data$pred_gbm_diff <- ifelse(
+  severity_data$severity > 1000,
+  predict(gbm_tuned, newdata = severity_data),
+  0  # Set to 0 if severity is <= 1000
+)
 
+severity_data$pred_glm <- predict(glm_model, type = "response")
 
-# Step 3: Make predictions with the tuned GBM model
-severity_data$pred_gbm_diff <- predict(gbm_tuned, newdata = severity_data)
-
-# Adjust GLM predictions with GBM residual predictions
+# Add the GLM predictions to the GBM predictions
 severity_data$final_pred_severity <- severity_data$pred_glm + severity_data$pred_gbm_diff
 
 # Step 4: Calculate new residuals
@@ -156,30 +172,27 @@ ggplot(severity_data, aes(x = severity, y = new_residuals)) +
   geom_point(color = "blue", alpha = 0.6, size = 2) +
   geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
   labs(
-    title = "New Residuals vs. Actual Severity",
+    title = "New Residuals vs. Actual Severity (Weighted for High Severity)",
     x = "Actual Severity",
     y = "New Residuals"
   ) +
   theme_minimal(base_size = 15) +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold"),
-    axis.title.x = element_text(margin = margin(t = 10)),
-    axis.title.y = element_text(margin = margin(r = 10))
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10)),
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10))
   )
 
 
+# Metrics =========================================================================
+rmse <- sqrt(mean((severity_data$severity - severity_data$final_pred_severity)^2))
+print(paste("RMSE:", rmse))
 
-
-
-
-
-
-
-
-
-
-
-
+# R squared
+ss_total <- sum((severity_data$severity - mean(severity_data$severity))^2)
+ss_residual <- sum((severity_data$severity - severity_data$final_pred_severity)^2)
+r_squared <- 1 - (ss_residual / ss_total)
+print(paste("R-squared:", r_squared))
 
 # Print the best tuning parameters
 print("Best hyperparameters:")
@@ -198,21 +211,10 @@ severity_data$new_residuals <- severity_data$severity - severity_data$final_pred
 rmse <- sqrt(mean(severity_data$new_residuals^2))
 print(paste("RMSE:", rmse))
 
-# MAE
-mae <- mean(abs(severity_data$new_residuals))
-print(paste("MAE:", mae))
-
-# MAPE
-mape <- mean(abs(severity_data$new_residuals / severity_data$severity)) * 100
-print(paste("MAPE:", mape))
-
 # R-squared
 ss_total <- sum((severity_data$severity - mean(severity_data$severity))^2)
 ss_residual <- sum(severity_data$new_residuals^2)
 r_squared <- 1 - (ss_residual / ss_total)
-print(paste("R-squared:", r_squared))
-deviance_reduction <- 1 - (gbm_model$train.error[gbm_model$n.trees] / gbm_model$train.error[1])
-print(paste("Explained Deviance:", deviance_reduction))
 
 # Plot the residuals for visual assessment
 ggplot(severity_data, aes(x = severity, y = new_residuals)) +
@@ -224,20 +226,11 @@ ggplot(severity_data, aes(x = severity, y = new_residuals)) +
   theme_minimal()
 
 
+# Final predictions after combining GLM and GBM
+severity_data$final_pred_severity <- severity_data$pred_glm + severity_data$pred_gbm_diff
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Final model MSE
+mse_final <- mean((severity_data$severity - severity_data$final_pred_severity)^2)
 
 vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_switcher", "nb_address_type_adj", "nb_suburb", "nb_state", "person_dob", "owner_age_years", "nb_breed_type",
                     "nb_breed_trait", "nb_breed_name_unique", "nb_breed_name_unique_concat", "exposure_id_1", "earned_units", "Total_Earned", "claim_nb", "Total_claim_amount", 
@@ -448,7 +441,9 @@ ggplot(frequency.model.data, aes(x = claim_freq)) +
   xlim(0, 1)
 
 
-###tweedie GLM####
+# ==================================================================================================
+# GLM - Tweedie
+# ==================================================================================================
 
 var_powers <- seq(1.1, 1.9, by = 0.1)
 
@@ -475,6 +470,69 @@ optimal_var_power
 tweedie_freq_model <- glm(claim_freq ~ ., data = freq_training_val, family = tweedie(var.power = optimal_var_power, link = "log"))
 
 summary(tweedie_freq_model)
+
+# Calculate residuals from the Tweedie GLM model
+freq_training_val$residuals <- freq_training_val$claim_freq - predict(tweedie_freq_model, newdata = freq_training_val, type = "response")
+
+# ==================================================================================================
+# GBM Training - Frequency GBM
+# ==================================================================================================
+
+# Convert numeric
+freq_training_val <- freq_training_val %>%
+  select(residuals, everything()) %>%
+  mutate(across(where(is.character), as.factor)) %>%
+  mutate(across(where(is.factor), as.numeric))
+
+# Hyperparameter tuning
+gbm_grid <- expand.grid(
+  n.trees = c(500, 1000, 1500),
+  interaction.depth = c(2, 3, 4),
+  shrinkage = c(0.01, 0.05, 0.1),
+  n.minobsinnode = c(5, 10)
+)
+
+# Train GBM model on residuals
+gbm_residuals_model <- train(
+  as.formula("residuals ~ ."),
+  data = freq_training_val,
+  method = "gbm",
+  distribution = "gaussian",
+  trControl = trainControl(method = "cv", number = 5, verboseIter = FALSE),
+  tuneGrid = gbm_grid,
+  verbose = FALSE
+)
+
+# Predict residual for training set
+freq_training_val$pred_gbm_residuals <- predict(gbm_residuals_model, newdata = freq_training_val)
+
+# Final prediction adding on GBM predictions
+freq_training_val$final_pred_claim_freq <- predict(tweedie_freq_model, newdata = freq_training_val, type = "response") + freq_training_val$pred_gbm_residuals
+
+freq_training_val$final_pred_claim_freq <- pmax(freq_training_val$final_pred_claim_freq, 0)
+
+# Calculate final residuals
+freq_training_val$final_residuals <- freq_training_val$claim_freq - freq_training_val$final_pred_claim_freq
+
+# Plot residual
+ggplot(freq_training_val, aes(x = claim_freq, y = final_residuals)) +
+  geom_point(color = "blue", alpha = 0.6, size = 2) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Final Residuals vs. Actual Claim Frequency",
+    x = "Actual Claim Frequency",
+    y = "Residuals"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(margin = unit(c(10, 0, 0, 0), "pt")),  # Top margin of 10 points
+    axis.title.y = element_text(margin = unit(c(0, 10, 0, 0), "pt"))   # Right margin of 10 points
+  )
+
+# Calculate MSE for for final predictions vs actual
+mean((freq_training_val$final_residuals - freq_training_val$claim_freq)^2)
+
 
 #Perfomance on the training data
 tweedie_freq_model_training_predictions <- predict(tweedie_freq_model,  newdata = freq_training_val, type = "response")

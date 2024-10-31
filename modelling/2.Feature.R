@@ -11,17 +11,16 @@ library(lubridate)
 # target columns:
 # Create predicting columns
 combined_data$severity <- pmin(combined_data$Total_claim_amount / combined_data$claim_nb, 3600)
-combined_data$severity <- combined_data$Total_claim_amount / combined_data$claim_nb
 combined_data$severity %>% summary
 
 ggplot(combined_data, aes(x = severity)) +
-  geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black") +
+  geom_histogram(binwidth = 10, fill = "skyblue", color = "black") +
   labs(title = "Distribution of Severity (Log Scale)", x = "Severity (log scale)", y = "Frequency") +
   theme_minimal()
 
 combined_data$severity <- combined_data$Total_claim_amount / combined_data$claim_nb
 combined_data$frequency <- combined_data$claim_freq
-quantile(severity_data$severity, 0.9, na.rm = TRUE)
+
 # ==============================================================================
 # Feature engineering
 # Numerical variable conversion
@@ -122,18 +121,23 @@ ggplot(combined_data, aes(x = person_age_group, y = severity)) +
 combined_data$pet_age_year <- combined_data$pet_age_months / 12
 
 # Convert breed trait into numeric
-# Step 1: Calculate the mean severity for each level of nb_breed_trait_num
 average_severity_by_trait <- aggregate(severity ~ nb_breed_trait_num, data = combined_data, FUN = mean)
 
-# Step 2: Order the nb_breed_trait_num levels based on the average severity
+# Order the nb_breed_trait_num levels based on the average severity
 average_severity_by_trait <- average_severity_by_trait[order(average_severity_by_trait$severity), ]
 
-# Step 3: Assign numeric encoding based on the ordered severity
-combined_data$nb_breed_trait_num_encoded <- factor(
-  combined_data$nb_breed_trait_num, 
-  levels = average_severity_by_trait$nb_breed_trait_num,   # Ordering the levels based on severity
-  ordered = TRUE                                           # Ensuring it's treated as an ordered factor
-)
+# Create encoding for test data
+average_severity_by_trait$nb_breed_trait_num_encoded <- seq_len(nrow(average_severity_by_trait))
+
+# # Assign numeric encoding based on the ordered severity
+# combined_data$nb_breed_trait_num_encoded <- factor(
+#   combined_data$nb_breed_trait_num, 
+#   levels = average_severity_by_trait$nb_breed_trait_num,   # Ordering the levels based on severity
+#   ordered = TRUE                                           # Ensuring it's treated as an ordered factor
+# )
+
+combined_data <- merge(combined_data, average_severity_by_trait[, c("nb_breed_trait_num", "nb_breed_trait_num_encoded")],
+                       by = "nb_breed_trait_num", all.x = TRUE)
 
 # Order the factors into numerical
 combined_data$nb_breed_trait_num_encoded <- as.numeric(combined_data$nb_breed_trait_num_encoded)
