@@ -239,7 +239,7 @@ vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_swi
 frequency.model.data <- combined_data[,-which(colnames(combined_data) %in% vars.to.remove)]
 
 frequency.model.data$qi <- as.factor(frequency.model.data$qi)
-
+colnames(frequency.model.data)
 frequency.model.data <- na.omit(frequency.model.data)
 
 str(frequency.model.data)
@@ -253,6 +253,269 @@ freq_training_val_index <- sample(1:nrow(frequency.model.data), 0.7*nrow(frequen
 freq_training_val <- frequency.model.data[freq_training_val_index, ]
 
 freq_test <- frequency.model.data[-freq_training_val_index, ]
+
+
+freq_training_val <- freq_training_val %>%
+  mutate(across(where(is.character), as.factor)) %>%
+  mutate(across(where(is.factor), as.numeric))
+
+freq_test <- freq_test %>%
+  mutate(across(where(is.character), as.factor)) %>%
+  mutate(across(where(is.factor), as.numeric))
+
+#Assessing Distribution of claim_freq
+
+mean_claim <- mean(frequency.model.data$claim_freq, na.rm = TRUE)
+sd_claim <- sd(frequency.model.data$claim_freq, na.rm = TRUE)
+
+ggplot(frequency.model.data, aes(x = claim_freq)) +
+  geom_density(fill = "lightblue", color = "darkblue", alpha = 0.6) +
+  stat_function(fun = dnorm, args = list(mean = mean_claim, sd = sd_claim), 
+                color = "red", linetype = "dashed", size = 1) +
+  labs(title = "Density Plot of Claim Frequency with Normal Curve",
+       x = "Claim Frequency",
+       y = "Density") +
+  theme_minimal() +
+  xlim(0, 1)
+
+
+# ==================================================================================================
+# GLM - Tweedie
+# ==================================================================================================
+
+var_powers <- seq(1, 2, by = 0.1)
+
+mse_results <- numeric(length(var_powers))
+
+train_control <- trainControl(method = "cv", number = 5) 
+
+for (i in seq_along(var_powers)) {
+  current_power <- var_powers[i]
+  
+  model <- train(
+    claim_freq ~ ., data = freq_training_val,  
+    method = "glm",
+    family = tweedie(var.power = current_power, link = "log"),
+    trControl = train_control,
+    metric = "RMSE"  
+  )
+  mse_results[i] <- mean(model$resample$RMSE^2)
+}
+
+optimal_var_power <- var_powers[which.min(mse_results)]
+optimal_var_power
+
+tweedie_freq_model <- glm(claim_freq ~ ., data = freq_training_val, family = tweedie(var.power = optimal_var_power, link = "log"))
+
+#Tweedie GLM Summary
+summary(tweedie_freq_model)
+
+
+#GLM Training Performance
+tweedie_freq_model_training_predictions <- pmax(predict(tweedie_freq_model,  newdata = freq_training_val, type = "response"),0)
+tweedie_freq_model_training_predictions <- as.vector(tweedie_freq_model_training_predictions)
+
+training_MSE_tweedie <- mean((tweedie_freq_model_training_predictions-freq_training_val$claim_freq)^2)
+
+
+#Performance on the test data 
+tweedie_freq_model_prediction <- predict(tweedie_freq_model,  newdata = freq_test, type = "response")
+tweedie_freq_model_prediction <- as.vector(tweedie_freq_model_prediction)
+
+test_MSE_tweedie <- mean((tweedie_freq_model_prediction-freq_test$claim_freq)^2)
+
+sdu <- summary(tweedie_freq_model)
+
+tweedie_freq_model$deviance
+
+
+#ADJ R^2
+RSS <- sum((freq_training_val$claim_freq - predictions)^2)
+
+R2 <- 1 - (RSS / SST)
+
+n <- nrow(freq_training_val)
+k <- length(coef(tweedie_freq_model)) - 1  
+
+R2_adj <- 1 - ((1 - R2) * (n - 1) / (n - k - 1))
+
+
+##Assessing Residuals
+fitted_values <- tweedie_freq_model$fitted.values
+
+# Calculate residuals
+residuals <- tweedie_freq_model$residuals
+
+ggplot(data.frame(Fitted = fitted_values, Residuals = residuals), aes(x = Fitted, y = Residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals") +
+  theme_minimal()
+
+
+#Actual Vs Predicted
+
+ggplot(data.frame(Actual = freq_training_val$claim_freq, residuals = tweedie_freq_model$residuals), aes(x = freq_training_val$claim_freq, y = residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Actual Frequency vs Residuals", x = "Actual Values", y = "Residuals") +
+  theme_minimal() 
+
+
+
+
+#GLM Test Performance
+
+freq_glm_test_residuals <- freq_test$claim_freq - pmax(predict(tweedie_freq_model, newdata = freq_test, type = "response"),0)
+
+glm_freq_test_results <- data.frame(test_residuals = freq_glm_test_residuals, Actual_Claim_Freq = freq_test$claim_freq)
+
+
+ggplot(glm_freq_test_results, aes(x = Actual_Claim_Freq, y = test_residuals)) +
+  geom_point(color = "blue", alpha = 0.6, size = 2) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Tweedie GLM Residuals vs. Claim Frequency",
+    x = "Actual Claim Frequency",
+    y = "New Residuals"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10)),
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10))
+  )
+
+mse_freq_glm <- mean((glm_freq_test_results$test_residuals)^2)
+
+
+# Calculate residuals from the Tweedie GLM model
+freq_training_val$residuals <- freq_training_val$claim_freq - predict(tweedie_freq_model, newdata = freq_training_val, type = "response")
+
+# ==================================================================================================
+# GBM Training - Frequency GBM
+# ==================================================================================================
+
+
+# Hyperparameter tuning
+gbm_grid <- expand.grid(
+  n.trees = c(500, 1000, 1500),
+  interaction.depth = c(2, 3, 4),
+  shrinkage = c(0.01, 0.05, 0.1),
+  n.minobsinnode = c(5, 10)
+)
+
+# Train GBM model on residuals
+gbm_residuals_model <- train(
+  as.formula("residuals ~ ."),
+  data = freq_training_val,
+  method = "gbm",
+  distribution = "gaussian",
+  trControl = trainControl(method = "cv", number = 5, verboseIter = FALSE),
+  tuneGrid = gbm_grid,
+  verbose = FALSE
+)
+
+
+
+#Test Performance
+predicted_test_freq_glm <- predict(tweedie_freq_model, newdata = freq_test, type = "response") #Predicting Claim_freq
+freq_test_gbm_residuals <- predict(gbm_residuals_model, newdata = freq_test) #Predicting the residuals
+
+
+final_test_freq_predictions_gbm <- predicted_test_freq_glm + freq_test_gbm_residuals #Final prediction = claim_freq+error
+final_test_freq_predictions_gbm <- pmax(final_test_freq_predictions_gbm, 0) #claim_freq non negative
+
+final_freq_test_residuals <- freq_test$claim_freq -  final_test_freq_predictions_gbm #Final Model with GBM residuals
+
+test_gbm_freq_summary <- data.frame(test_residuals = final_freq_test_residuals, Actual_Claim_Freq = freq_test$claim_freq) #Data frame of actual claim_Freq and residuals
+
+
+ggplot(test_gbm_freq_summary, aes(x = Actual_Claim_Freq, y = test_residuals)) +   ###Visualisation of glm with gbm performance on the test data
+  geom_point(color = "blue", alpha = 0.6, size = 2) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "GLM with GBM Residuals vs. Claim Frequency",
+    x = "Actual Claim Frequency",
+    y = "New Residuals"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10)),
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10))
+  )
+
+
+test_mse_final_gbm <- mean((final_freq_test_residuals)^2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Predict residual for training set
+freq_training_val$pred_gbm_residuals <- predict(gbm_residuals_model, newdata = freq_training_val)
+
+# Final prediction adding on GBM predictions
+freq_training_val$final_pred_claim_freq <- predict(tweedie_freq_model, newdata = freq_training_val, type = "response") + freq_training_val$pred_gbm_residuals
+
+freq_training_val$final_pred_claim_freq <- pmax(freq_training_val$final_pred_claim_freq, 0)
+
+# Calculate final residuals
+freq_training_val$final_residuals <- freq_training_val$claim_freq - freq_training_val$final_pred_claim_freq
+
+# Plot residual
+ggplot(freq_training_val, aes(x = claim_freq, y = final_residuals)) +
+  geom_point(color = "blue", alpha = 0.6, size = 2) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Final Residuals vs. Actual Claim Frequency",
+    x = "Actual Claim Frequency",
+    y = "Residuals"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(margin = unit(c(10, 0, 0, 0), "pt")),  # Top margin of 10 points
+    axis.title.y = element_text(margin = unit(c(0, 10, 0, 0), "pt"))   # Right margin of 10 points
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ######random forest model
@@ -424,161 +687,3 @@ elastic_test_mse <- mean((elastic_freq_predictions - y.test)^2)
 
 
 
-#Assessing Distribution of claim_freq
-
-mean_claim <- mean(frequency.model.data$claim_freq, na.rm = TRUE)
-sd_claim <- sd(frequency.model.data$claim_freq, na.rm = TRUE)
-
-ggplot(frequency.model.data, aes(x = claim_freq)) +
-  geom_density(fill = "lightblue", color = "darkblue", alpha = 0.6) +
-  stat_function(fun = dnorm, args = list(mean = mean_claim, sd = sd_claim), 
-                color = "red", linetype = "dashed", size = 1) +
-  labs(title = "Density Plot of Claim Frequency with Normal Curve",
-       x = "Claim Frequency",
-       y = "Density") +
-  theme_minimal() +
-  xlim(0, 1)
-
-
-# ==================================================================================================
-# GLM - Tweedie
-# ==================================================================================================
-
-var_powers <- seq(1, 2, by = 0.1)
-
-mse_results <- numeric(length(var_powers))
-
-train_control <- trainControl(method = "cv", number = 5) 
-
-for (i in seq_along(var_powers)) {
-  current_power <- var_powers[i]
-  
-  model <- train(
-    claim_freq ~ ., data = freq_training_val,  
-    method = "glm",
-    family = tweedie(var.power = current_power, link = "log"),
-    trControl = train_control,
-    metric = "RMSE"  
-  )
-    mse_results[i] <- mean(model$resample$RMSE^2)
-}
-
-optimal_var_power <- var_powers[which.min(mse_results)]
-optimal_var_power
-
-tweedie_freq_model <- glm(claim_freq ~ ., data = freq_training_val, family = tweedie(var.power = optimal_var_power, link = "log"))
-
-summary(tweedie_freq_model)
-
-# Calculate residuals from the Tweedie GLM model
-freq_training_val$residuals <- freq_training_val$claim_freq - predict(tweedie_freq_model, newdata = freq_training_val, type = "response")
-
-# ==================================================================================================
-# GBM Training - Frequency GBM
-# ==================================================================================================
-
-# Convert numeric
-freq_training_val <- freq_training_val %>%
-  select(residuals, everything()) %>%
-  mutate(across(where(is.character), as.factor)) %>%
-  mutate(across(where(is.factor), as.numeric))
-
-# Hyperparameter tuning
-gbm_grid <- expand.grid(
-  n.trees = c(500, 1000, 1500),
-  interaction.depth = c(2, 3, 4),
-  shrinkage = c(0.01, 0.05, 0.1),
-  n.minobsinnode = c(5, 10)
-)
-
-# Train GBM model on residuals
-gbm_residuals_model <- train(
-  as.formula("residuals ~ ."),
-  data = freq_training_val,
-  method = "gbm",
-  distribution = "gaussian",
-  trControl = trainControl(method = "cv", number = 5, verboseIter = FALSE),
-  tuneGrid = gbm_grid,
-  verbose = FALSE
-)
-
-# Predict residual for training set
-freq_training_val$pred_gbm_residuals <- predict(gbm_residuals_model, newdata = freq_training_val)
-
-# Final prediction adding on GBM predictions
-freq_training_val$final_pred_claim_freq <- predict(tweedie_freq_model, newdata = freq_training_val, type = "response") + freq_training_val$pred_gbm_residuals
-
-freq_training_val$final_pred_claim_freq <- pmax(freq_training_val$final_pred_claim_freq, 0)
-
-# Calculate final residuals
-freq_training_val$final_residuals <- freq_training_val$claim_freq - freq_training_val$final_pred_claim_freq
-
-# Plot residual
-ggplot(freq_training_val, aes(x = claim_freq, y = final_residuals)) +
-  geom_point(color = "blue", alpha = 0.6, size = 2) +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-  labs(
-    title = "Final Residuals vs. Actual Claim Frequency",
-    x = "Actual Claim Frequency",
-    y = "Residuals"
-  ) +
-  theme_minimal(base_size = 15) +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    axis.title.x = element_text(margin = unit(c(10, 0, 0, 0), "pt")),  # Top margin of 10 points
-    axis.title.y = element_text(margin = unit(c(0, 10, 0, 0), "pt"))   # Right margin of 10 points
-  )
-
-# Calculate MSE for for final predictions vs actual
-mean((freq_training_val$final_residuals - freq_training_val$claim_freq)^2)
-
-
-#Perfomance on the training data
-tweedie_freq_model_training_predictions <- predict(tweedie_freq_model,  newdata = freq_training_val, type = "response")
-tweedie_freq_model_training_predictions <- as.vector(tweedie_freq_model_training_predictions)
-
-training_MSE_tweedie <- mean((tweedie_freq_model_training_predictions-freq_training_val$claim_freq)^2)
-
-
-#Performance on the test data 
-tweedie_freq_model_prediction <- predict(tweedie_freq_model,  newdata = freq_test, type = "response")
-tweedie_freq_model_prediction <- as.vector(tweedie_freq_model_prediction)
-
-test_MSE_tweedie <- mean((tweedie_freq_model_prediction-freq_test$claim_freq)^2)
-
-sdu <- summary(tweedie_freq_model)
-
-tweedie_freq_model$deviance
-
-
-#ADJ R^2
-RSS <- sum((freq_training_val$claim_freq - predictions)^2)
-
-R2 <- 1 - (RSS / SST)
-
-n <- nrow(freq_training_val)
-k <- length(coef(tweedie_freq_model)) - 1  
-
-R2_adj <- 1 - ((1 - R2) * (n - 1) / (n - k - 1))
-
-
-##Assessing Residuals
-fitted_values <- tweedie_freq_model$fitted.values
-
-# Calculate residuals
-residuals <- tweedie_freq_model$residuals
-
-ggplot(data.frame(Fitted = fitted_values, Residuals = residuals), aes(x = Fitted, y = Residuals)) +
-  geom_point(alpha = 0.5) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals") +
-  theme_minimal()
-
-
-#Actual Vs Predicted
-
-ggplot(data.frame(Actual = freq_training_val$claim_freq, residuals = tweedie_freq_model$residuals), aes(x = freq_training_val$claim_freq, y = residuals)) +
-  geom_point(alpha = 0.5) +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
-  labs(title = "Actual Frequency vs Residuals", x = "Actual Values", y = "Residuals") +
-  theme_minimal() 

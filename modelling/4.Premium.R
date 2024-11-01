@@ -153,8 +153,57 @@ sample$pred_severity_final %>% summary
 sample$pred_severity_final[is.na(sample$pred_severity)] <- 212
 sample$pred_severity_final
 # ===============================================================================
+
+vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_switcher", 
+                    "nb_address_type_adj", "nb_suburb", "nb_state", "person_dob", 
+                    "owner_age_years", "nb_breed_type", "nb_breed_trait", 
+                    "nb_breed_name_unique", "nb_breed_name_unique_concat", 
+                    "exposure_id_1", "earned_units", "Total_Earned", "claim_nb", 
+                    "Total_claim_amount", "Total_claim_paid", "severity", 
+                    "frequency", "is_multi_plan", "quote_time_group", "sa2_code", 
+                    "nb_postcode", "is_multi_pet_plan", "pet_age_year")
+
+freq_pred_data <- sample[ , -which(colnames(sample) %in% vars.to.remove)]
+
+more.vars.to.remove <- colnames(freq_pred_data)[which(!(colnames(freq_pred_data) %in% colnames(freq_training_val)))]
+
+freq_pred_data <- freq_pred_data[ , -which(colnames(freq_pred_data) %in% more.vars.to.remove)]
+
+freq_pred_data <- na.omit(freq_pred_data)
+
+print(colnames(freq_pred_data) %in% colnames(freq_training_val))
+
+
+print(colnames(freq_training_val)[which(!(colnames(freq_training_val) %in% colnames(freq_pred_data)))])
+
+freq_pred_data$qi <- as.factor(freq_pred_data$qi)
+
+freq_pred_data <- freq_pred_data %>%
+  mutate(across(where(is.character), ~ ifelse(. == "true", 1, ifelse(. == "false", 2, .)))) %>%
+  mutate_if(is.character, as.numeric) %>%
+  mutate_if(is.factor, ~ as.numeric(as.factor(.)))
+
+# Convert date and numeric columns
+freq_pred_data$quote_date <- as.Date(freq_pred_data$quote_date)
+freq_pred_data$nb_breed_trait_num_encoded <- as.numeric(freq_pred_data$nb_breed_trait_num_encoded)
+freq_pred_data$tenure <- as.integer(freq_pred_data$tenure)
+freq_pred_data$pet_age_months <- as.integer(freq_pred_data$pet_age_months)
+freq_pred_data$nb_contribution <- as.integer(freq_pred_data$nb_contribution)
+freq_pred_data$nb_excess <- as.integer(freq_pred_data$nb_excess)
+freq_pred_data$nb_number_of_breeds <- as.integer(freq_pred_data$nb_number_of_breeds)
+freq_pred_data$nb_contribution_excess <- as.integer(freq_pred_data$nb_contribution_excess)
+
+# Check structures for any mismatches
+str(freq_pred_data)
+str(freq_training_val)
+
 # Freq prediction
-sample$pred_freq <- predict(tweedie_freq_model, newdata = sample, type = "response")
+predicted.values <- predict(tweedie_freq_model, newdata = freq_pred_data, type = "response")
+min(predicted.values)
+max(predicted.values)
+
+nrow(freq_pred_data)
+
 sample$pred_freq %>% summary
 
 
