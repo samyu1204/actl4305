@@ -178,12 +178,46 @@ print(colnames(freq_training_val)[which(!(colnames(freq_training_val) %in% colna
 
 freq_pred_data$qi <- as.factor(freq_pred_data$qi)
 
+
+
+
+
+
+
+
+
+
+
+
+freq_training_val <- freq_training_val %>%
+  mutate(across(where(is.character), as.factor))
+
+# Create a mapping of factor levels from training data
+factor_mapping <- lapply(freq_training_val, function(x) {
+  if (is.factor(x)) {
+    return(levels(x))  
+  } else {
+    return(NULL)  
+  }
+})
+
+factor_mapping <- Filter(Negate(is.null), factor_mapping)
+names(factor_mapping) <- names(freq_training_val)[sapply(freq_training_val, is.factor)]  # Name the list with corresponding column names
+
 freq_pred_data <- freq_pred_data %>%
   mutate(across(where(is.character), ~ ifelse(. == "true", 1, ifelse(. == "false", 2, .)))) %>%
-  mutate_if(is.character, as.numeric) %>%
-  mutate_if(is.factor, ~ as.numeric(as.factor(.)))
+  mutate(across(where(is.character), as.factor))
 
-# Convert date and numeric columns
+for (col_name in names(factor_mapping)) {
+  if (col_name %in% colnames(freq_pred_data)) {
+    levels(freq_pred_data[[col_name]]) <- factor_mapping[[col_name]]
+  }
+}
+
+freq_pred_data <- freq_pred_data %>%
+  mutate(across(where(is.factor), as.numeric))
+
+
 freq_pred_data$quote_date <- as.Date(freq_pred_data$quote_date)
 freq_pred_data$nb_breed_trait_num_encoded <- as.numeric(freq_pred_data$nb_breed_trait_num_encoded)
 freq_pred_data$tenure <- as.integer(freq_pred_data$tenure)
@@ -192,6 +226,9 @@ freq_pred_data$nb_contribution <- as.integer(freq_pred_data$nb_contribution)
 freq_pred_data$nb_excess <- as.integer(freq_pred_data$nb_excess)
 freq_pred_data$nb_number_of_breeds <- as.integer(freq_pred_data$nb_number_of_breeds)
 freq_pred_data$nb_contribution_excess <- as.integer(freq_pred_data$nb_contribution_excess)
+
+# Convert date and numeric columns
+
 
 # Check structures for any mismatches
 str(freq_pred_data)
@@ -207,3 +244,8 @@ nrow(freq_pred_data)
 sample$pred_freq %>% summary
 
 
+
+
+# Check structures to confirm consistency
+str(freq_training_val)
+str(freq_pred_data)
