@@ -152,8 +152,11 @@ sample$pred_severity_final %>% summary
 # Give the min of the group to those who are predicted to have zero claim to spread the risk
 sample$pred_severity_final[is.na(sample$pred_severity)] <- 212
 sample$pred_severity_final
-# ===============================================================================
 
+
+
+
+# ===============================================================================
 vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_switcher", 
                     "nb_address_type_adj", "nb_suburb", "nb_state", "person_dob", 
                     "owner_age_years", "nb_breed_type", "nb_breed_trait", 
@@ -169,53 +172,20 @@ more.vars.to.remove <- colnames(freq_pred_data)[which(!(colnames(freq_pred_data)
 
 freq_pred_data <- freq_pred_data[ , -which(colnames(freq_pred_data) %in% more.vars.to.remove)]
 
-freq_pred_data <- na.omit(freq_pred_data)
 
-print(colnames(freq_pred_data) %in% colnames(freq_training_val))
+freq_pred_data$qi <- ifelse(freq_pred_data$qi == "Good", 1,
+                                  ifelse(freq_pred_data$qi == "Acceptable", 2,
+                                         ifelse(freq_pred_data$qi == "Poor", 3, NA)))
 
-
-print(colnames(freq_training_val)[which(!(colnames(freq_training_val) %in% colnames(freq_pred_data)))])
-
-freq_pred_data$qi <- as.factor(freq_pred_data$qi)
+freq_pred_data$qi <- as.numeric(freq_pred_data$qi)
 
 
-
-
-
-
-
-
-
-
-
-
-freq_training_val <- freq_training_val %>%
-  mutate(across(where(is.character), as.factor))
-
-# Create a mapping of factor levels from training data
-factor_mapping <- lapply(freq_training_val, function(x) {
-  if (is.factor(x)) {
-    return(levels(x))  
-  } else {
-    return(NULL)  
-  }
-})
-
-factor_mapping <- Filter(Negate(is.null), factor_mapping)
-names(factor_mapping) <- names(freq_training_val)[sapply(freq_training_val, is.factor)]  # Name the list with corresponding column names
+freq_pred_data$pet_de_sexed <- ifelse(freq_pred_data$pet_de_sexed == "true", 2, ifelse(freq_pred_data$pet_de_sexed == "false", 1, NA))
+freq_pred_data$pet_de_sexed <- as.numeric(freq_pred_data$pet_de_sexed)
 
 freq_pred_data <- freq_pred_data %>%
-  mutate(across(where(is.character), ~ ifelse(. == "true", 1, ifelse(. == "false", 2, .)))) %>%
-  mutate(across(where(is.character), as.factor))
+  mutate_if(is.numeric, ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))
 
-for (col_name in names(factor_mapping)) {
-  if (col_name %in% colnames(freq_pred_data)) {
-    levels(freq_pred_data[[col_name]]) <- factor_mapping[[col_name]]
-  }
-}
-
-freq_pred_data <- freq_pred_data %>%
-  mutate(across(where(is.factor), as.numeric))
 
 
 freq_pred_data$quote_date <- as.Date(freq_pred_data$quote_date)
@@ -227,25 +197,10 @@ freq_pred_data$nb_excess <- as.integer(freq_pred_data$nb_excess)
 freq_pred_data$nb_number_of_breeds <- as.integer(freq_pred_data$nb_number_of_breeds)
 freq_pred_data$nb_contribution_excess <- as.integer(freq_pred_data$nb_contribution_excess)
 
-# Convert date and numeric columns
 
 
-# Check structures for any mismatches
-str(freq_pred_data)
-str(freq_training_val)
-
-# Freq prediction
 predicted.values <- predict(tweedie_freq_model, newdata = freq_pred_data, type = "response")
-min(predicted.values)
-max(predicted.values)
-
-nrow(freq_pred_data)
-
-sample$pred_freq %>% summary
 
 
 
 
-# Check structures to confirm consistency
-str(freq_training_val)
-str(freq_pred_data)
