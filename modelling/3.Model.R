@@ -44,33 +44,33 @@ formula <- as.formula(paste("severity", "~", paste(features, collapse = " + "), 
 glm_model_severity <- glm(formula, family = Gamma(link = "log"), data = severity_data)
 
 # Gaussian GLM 
-glm_model <- glm(formula, family = gaussian, data = severity_data)
+# glm_model <- glm(formula, family = gaussian, data = severity_data)
 
 # Tweedie GLM 
-var_powers <- seq(1.1, 1.9, by = 0.1)
-
-mse_results <- numeric(length(var_powers))
-
-train_control <- trainControl(method = "cv", number = 5) 
-
-for (i in seq_along(var_powers)) {
-  current_power <- var_powers[i]
-  
-  glm_model <- train(
-    formula, data = severity_data,  
-    method = "glm",
-    family = tweedie(var.power = current_power, link = "log"),
-    trControl = train_control,
-    metric = "RMSE"  
-  )
-  mse_results[i] <- mean(glm_model$resample$RMSE^2)
-}
-
-optimal_var_power <- var_powers[which.min(mse_results)]
-optimal_var_power
+# var_powers <- seq(1.1, 1.9, by = 0.1)
+# 
+# mse_results <- numeric(length(var_powers))
+# 
+# train_control <- trainControl(method = "cv", number = 5) 
+# 
+# for (i in seq_along(var_powers)) {
+#   current_power <- var_powers[i]
+#   
+#   glm_model <- train(
+#     formula, data = severity_data,  
+#     method = "glm",
+#     family = tweedie(var.power = current_power, link = "log"),
+#     trControl = train_control,
+#     metric = "RMSE"  
+#   )
+#   mse_results[i] <- mean(glm_model$resample$RMSE^2)
+# }
+# 
+# optimal_var_power <- var_powers[which.min(mse_results)]
+# optimal_var_power
 
 # Summary
-summary(glm_model)
+summary(glm_model_severity)
 
 stepwise_model <- step(glm_model, direction = "both")
 final_formula <- formula(stepwise_model)
@@ -88,7 +88,7 @@ BIC(glm_model)
 actual_severity <- severity_data$severity
 
 # Calculate residuals as the difference between actual and predicted values
-actual_residuals <- actual_severity - predict(glm_model, type = "response")
+actual_residuals <- actual_severity - predict(glm_model_severity, type = "response")
 
 # Create a data frame with actual severity and residuals for easy plotting
 residual_data <- data.frame(
@@ -120,7 +120,7 @@ mse_glm <- mean((actual_residuals)^2)
 # ==================================================================================================
 
 # Calculate residuals from the initial GLM model
-severity_data$severity_difference <- severity_data$severity - predict(glm_model, type = "response")
+severity_data$severity_difference <- severity_data$severity - predict(glm_model_severity, type = "response")
 
 # Define the formula
 formula <- as.formula(paste("severity_difference", "~", paste(features, collapse = " + "), sep = ""))
@@ -155,11 +155,11 @@ gbm_tuned_severity <- train(
 # Make predictions using the GBM model for severity > 1000
 severity_data$pred_gbm_diff <- ifelse(
   severity_data$severity > 1000,
-  predict(gbm_tuned, newdata = severity_data),
+  predict(gbm_tuned_severity, newdata = severity_data),
   0  # Set to 0 if severity is <= 1000
 )
 
-severity_data$pred_glm <- predict(glm_model, type = "response")
+severity_data$pred_glm <- predict(glm_model_severity, type = "response")
 
 # Add the GLM predictions to the GBM predictions
 severity_data$final_pred_severity <- severity_data$pred_glm + severity_data$pred_gbm_diff
@@ -229,16 +229,8 @@ ggplot(severity_data, aes(x = severity, y = new_residuals)) +
 # Final predictions after combining GLM and GBM
 severity_data$final_pred_severity <- severity_data$pred_glm + severity_data$pred_gbm_diff
 
-<<<<<<< HEAD
-# Final model MSE
-mse_final <- mean((severity_data$severity - severity_data$final_pred_severity)^2)
-=======
-
-
 
 #################Claim Frequency Modelling#################
-
->>>>>>> 07a16dce695212a8c10d06700d9615c51f8316da
 
 vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_switcher", "nb_address_type_adj", "nb_suburb", "nb_state", "person_dob", "owner_age_years", "nb_breed_type",
                     "nb_breed_trait", "nb_breed_name_unique", "nb_breed_name_unique_concat", "exposure_id_1", "earned_units", "Total_Earned", "claim_nb", "Total_claim_amount", 
@@ -261,7 +253,6 @@ freq_training_val_index <- sample(1:nrow(frequency.model.data), 0.7*nrow(frequen
 freq_training_val <- frequency.model.data[freq_training_val_index, ]
 
 freq_test <- frequency.model.data[-freq_training_val_index, ]
-
 
 
 ######random forest model

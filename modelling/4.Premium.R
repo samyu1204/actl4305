@@ -125,6 +125,14 @@ sa2_pop_density <- read_excel("data/sa2_pop_density.xlsx")
 sa2_pop_density$sa2_code <- as.character(sa2_pop_density$sa2_code)
 sample <- left_join(sample, sa2_pop_density, by = "sa2_code")
 
+sample$UW_Date <- as.Date(sample$quote_date)
+sample$nb_policy_first_inception_date <- as.Date(sample$quote_date)
+sample$lead_date_day <- as.Date(sample$quote_date)
+sample$nb_breed_trait_num_encoded.x <- as.factor(sample$nb_breed_trait_num_encoded)
+sample$nb_breed_trait_num_encoded.y <- as.factor(sample$nb_breed_trait_num_encoded)
+sample$pet_de_sexed <- tolower(sample$pet_de_sexed) 
+sample$is_multi_pet_plan <- tolower(sample$is_multi_pet_plan)
+sample$tenure <- 1
 # ===============================================================================
 # Predict severity
 sample$pred_severity <- predict(glm_model_severity, newdata = sample, type = "response")
@@ -134,14 +142,19 @@ sample$pred_severity %>% summary
 # Predict frequency
 sample$severity_gbm <- ifelse(
   sample$pred_severity > 1000,
-  predict(gbm_tuned_severity, newdata = severity_data),
+  predict(gbm_tuned_severity, newdata = sample),
   0  # Set to 0 if severity is <= 1000
 )
 
 sample$pred_severity_final <- sample$pred_severity + sample$severity_gbm
 sample$pred_severity_final %>% summary
 
+# Give the min of the group to those who are predicted to have zero claim to spread the risk
 sample$pred_severity_final[is.na(sample$pred_severity)] <- 212
-
+sample$pred_severity_final
+# ===============================================================================
+# Freq prediction
+sample$pred_freq <- predict(tweedie_freq_model, newdata = sample, type = "response")
+sample$pred_freq %>% summary
 
 
