@@ -238,11 +238,23 @@ vars.to.remove <- c("exposure_id", "pet_gender", "pet_de_sexed_age", "pet_is_swi
 
 frequency.model.data <- combined_data[,-which(colnames(combined_data) %in% vars.to.remove)]
 
-frequency.model.data$qi <- as.factor(frequency.model.data$qi)
-colnames(frequency.model.data)
-frequency.model.data <- na.omit(frequency.model.data)
 
-str(frequency.model.data)
+
+frequency.model.data$qi <- ifelse(frequency.model.data$qi == "Good", 1,
+                                              ifelse(frequency.model.data$qi == "Acceptable", 2,
+                                                     ifelse(frequency.model.data$qi == "Poor", 3, NA)))
+
+
+frequency.model.data$qi <- as.numeric(frequency.model.data$qi)
+
+
+
+frequency.model.data$pet_de_sexed <- ifelse(frequency.model.data$pet_de_sexed == "true", 2, ifelse(frequency.model.data$pet_de_sexed == "false", 1, NA))
+frequency.model.data$pet_de_sexed <- as.numeric(frequency.model.data$pet_de_sexed)
+
+
+frequency.model.data <- frequency.model.data %>%  #Convert all NA's to the mean of the column
+  mutate_if(is.numeric, ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))
 
 #Splitting into test and training
 
@@ -253,15 +265,6 @@ freq_training_val_index <- sample(1:nrow(frequency.model.data), 0.7*nrow(frequen
 freq_training_val <- frequency.model.data[freq_training_val_index, ]
 
 freq_test <- frequency.model.data[-freq_training_val_index, ]
-
-
-freq_training_val <- freq_training_val %>%
-  mutate(across(where(is.character), as.factor)) %>%
-  mutate(across(where(is.factor), as.numeric))
-
-freq_test <- freq_test %>%
-  mutate(across(where(is.character), as.factor)) %>%
-  mutate(across(where(is.factor), as.numeric))
 
 #Assessing Distribution of claim_freq
 
@@ -330,7 +333,9 @@ tweedie_freq_model$deviance
 
 
 #ADJ R^2
-RSS <- sum((freq_training_val$claim_freq - predictions)^2)
+RSS <- sum((freq_training_val$claim_freq - tweedie_freq_model_training_predictions)^2)
+SST <- sum(freq_training_val$claim_freq - mean(freq_training_val$claim_freq)^2)
+
 
 R2 <- 1 - (RSS / SST)
 
@@ -338,30 +343,6 @@ n <- nrow(freq_training_val)
 k <- length(coef(tweedie_freq_model)) - 1  
 
 R2_adj <- 1 - ((1 - R2) * (n - 1) / (n - k - 1))
-
-
-##Assessing Residuals
-fitted_values <- tweedie_freq_model$fitted.values
-
-# Calculate residuals
-residuals <- tweedie_freq_model$residuals
-
-ggplot(data.frame(Fitted = fitted_values, Residuals = residuals), aes(x = Fitted, y = Residuals)) +
-  geom_point(alpha = 0.5) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals") +
-  theme_minimal()
-
-
-#Actual Vs Predicted
-
-ggplot(data.frame(Actual = freq_training_val$claim_freq, residuals = tweedie_freq_model$residuals), aes(x = freq_training_val$claim_freq, y = residuals)) +
-  geom_point(alpha = 0.5) +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
-  labs(title = "Actual Frequency vs Residuals", x = "Actual Values", y = "Residuals") +
-  theme_minimal() 
-
-
 
 
 #GLM Test Performance
@@ -493,31 +474,6 @@ ggplot(freq_training_val, aes(x = claim_freq, y = final_residuals)) +
   )
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ######random forest model
 freq_rf <- randomForest(claim_freq ~., data = freq_training_val, ntree = 100, importance = TRUE)
 
@@ -603,7 +559,7 @@ stepwise_freq_model_test_MSE <- mean((stepwise_model_freq_predicted_values-freq_
 
 
 ####Lasso Model####
-X.training <- model.matrix(claim_freq~., data = freq_training_val)
+X.training <- model.matrix(claim_freq~., data = freq_training_val)[,-1]
 
 Y.training <- freq_training_val$claim_freq
 
@@ -622,7 +578,7 @@ training_lasso_MSE <- mean((lasso_freq_predictions_training-Y.training)^2)
 
 
 #Test Performance
-x.test <- model.matrix(claim_freq~., data = freq_test)
+x.test <- model.matrix(claim_freq~., data = freq_test)[,-1]
 y.test <- freq_test$claim_freq
 
 

@@ -199,8 +199,19 @@ freq_pred_data$nb_contribution_excess <- as.integer(freq_pred_data$nb_contributi
 
 
 
-predicted.values <- predict(tweedie_freq_model, newdata = freq_pred_data, type = "response")
+
+
+predicted.values <- predict(freq_lasso_model, newx = model.matrix(~., data = freq_pred_data)[,-1])
+
+min(predicted.values)
+max(predicted.values)
 
 
 
+ncol(model.matrix(~., data = freq_pred_data)[,-1])
+ncol(X.training)
 
+colnames(X.training) %in% colnames(model.matrix(~., data = freq_pred_data)[,-1])
+
+
+colnames(X.training)[which(!()]
