@@ -333,6 +333,8 @@ tweedie_freq_model_training_predictions <- as.vector(tweedie_freq_model_training
 
 training_MSE_tweedie <- mean((tweedie_freq_model_training_predictions-freq_training_val$claim_freq)^2)
 
+RMSE <- training_MSE_tweedie^(1/2)
+
 
 #Performance on the test data 
 tweedie_freq_model_prediction <- predict(tweedie_freq_model,  newdata = freq_test, type = "response")
@@ -347,7 +349,7 @@ tweedie_freq_model$deviance
 
 #ADJ R^2
 RSS <- sum((freq_training_val$claim_freq - tweedie_freq_model_training_predictions)^2)
-SST <- sum(freq_training_val$claim_freq - mean(freq_training_val$claim_freq)^2)
+SST <- sum((freq_training_val$claim_freq - mean(freq_training_val$claim_freq))^2)
 
 
 R2 <- 1 - (RSS / SST)
@@ -369,9 +371,9 @@ ggplot(glm_freq_test_results, aes(x = Actual_Claim_Freq, y = test_residuals)) +
   geom_point(color = "blue", alpha = 0.6, size = 2) +
   geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
   labs(
-    title = "Tweedie GLM Residuals vs. Claim Frequency",
+    title = "Residuals vs. Actual Claim Frequency",
     x = "Actual Claim Frequency",
-    y = "New Residuals"
+    y = "Residuals"
   ) +
   theme_minimal(base_size = 15) +
   theme(
@@ -429,7 +431,7 @@ ggplot(test_gbm_freq_summary, aes(x = Actual_Claim_Freq, y = test_residuals)) + 
   geom_point(color = "blue", alpha = 0.6, size = 2) +
   geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
   labs(
-    title = "GLM with GBM Residuals vs. Claim Frequency",
+    title = "Residuals vs. Claim Frequency",
     x = "Actual Claim Frequency",
     y = "New Residuals"
   ) +
