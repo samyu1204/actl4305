@@ -198,20 +198,14 @@ freq_pred_data$nb_number_of_breeds <- as.integer(freq_pred_data$nb_number_of_bre
 freq_pred_data$nb_contribution_excess <- as.integer(freq_pred_data$nb_contribution_excess)
 
 
+freq_pred_data <- freq_pred_data[,-which(colnames(freq_pred_data) %in% additional.var.to.remove)]
 
 
+predicted_values_glm_sample <- predict(tweedie_freq_model, newdata = freq_pred_data, type = "response")
 
-predicted.values <- predict(freq_lasso_model, newx = model.matrix(~., data = freq_pred_data)[,-1])
+predicted_gbm_residuals_sample <- predict(gbm_residuals_model, newdata = freq_pred_data)
 
-min(predicted.values)
-max(predicted.values)
+final_sample_predictions <- predicted_values_glm_sample + predicted_gbm_residuals_sample
 
+final_sample_predictions <- pmax(final_sample_predictions, 0)
 
-
-ncol(model.matrix(~., data = freq_pred_data)[,-1])
-ncol(X.training)
-
-colnames(X.training) %in% colnames(model.matrix(~., data = freq_pred_data)[,-1])
-
-
-colnames(X.training)[which(!()]

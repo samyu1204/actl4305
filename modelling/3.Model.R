@@ -256,6 +256,19 @@ frequency.model.data$pet_de_sexed <- as.numeric(frequency.model.data$pet_de_sexe
 frequency.model.data <- frequency.model.data %>%  #Convert all NA's to the mean of the column
   mutate_if(is.numeric, ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))
 
+
+
+
+
+
+
+
+#######TESTING REMOVAL OF PREDICTORS########
+
+additional.var.to.remove <- c("qi", "nb_state_num", "size_encoding", "lead_date_day", "UW_Date", "quote_time_group_num", "density", "is_multi_pet_plan_num")
+
+frequency.model.data <- frequency.model.data[,-which(colnames(frequency.model.data) %in% additional.var.to.remove)]
+
 #Splitting into test and training
 
 set.seed(2131)
@@ -389,7 +402,7 @@ gbm_grid <- expand.grid(
 # Train GBM model on residuals
 gbm_residuals_model <- train(
   as.formula("residuals ~ ."),
-  data = freq_training_val,
+  data = freq_training_val[,-which(colnames(freq_training_val) == "claim_freq")],
   method = "gbm",
   distribution = "gaussian",
   trControl = trainControl(method = "cv", number = 5, verboseIter = FALSE),
@@ -401,7 +414,7 @@ gbm_residuals_model <- train(
 
 #Test Performance
 predicted_test_freq_glm <- predict(tweedie_freq_model, newdata = freq_test, type = "response") #Predicting Claim_freq
-freq_test_gbm_residuals <- predict(gbm_residuals_model, newdata = freq_test) #Predicting the residuals
+freq_test_gbm_residuals <- predict(gbm_residuals_model, newdata = freq_test[,-which(colnames(freq_test) == "claim_freq")]) #Predicting the residuals
 
 
 final_test_freq_predictions_gbm <- predicted_test_freq_glm + freq_test_gbm_residuals #Final prediction = claim_freq+error
